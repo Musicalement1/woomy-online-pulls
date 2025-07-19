@@ -7716,6 +7716,7 @@ const Chain = Chainf;
                 this.invuln = false;
                 this.damageReceived = this.health.max * 2;
                 this.health.amount = -1;
+				this.destroy()
             }
             destroy(skipEvents=false) {
                 if (this.hasDestroyed) {
