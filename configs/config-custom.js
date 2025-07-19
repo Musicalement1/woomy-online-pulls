@@ -106,7 +106,6 @@ let map = {
         "SKILL_CHEAT_CAP": 60,
         "SKILL_LEAK": 0,
         "STEALTH": 4,
-        "MIN_SPEED": 0.001,
         "MIN_DAMAGE": 0,
         "MAX_FOOD": 400,
         "MAX_NEST_FOOD": 30,

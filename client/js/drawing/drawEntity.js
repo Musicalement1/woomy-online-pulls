@@ -6,6 +6,10 @@ import { lerpAngle, lerp, expLerp } from "../lerp.js"
 import { imageCache } from "../assets.js";
 import { global } from "../global.js";
 
+const canvas2 = new OffscreenCanvas(1,1);
+const ctx2 = canvas2.getContext("2d")
+ctx2.imageSmoothingEnabled = false;
+
 const gunCache = new Map()
 const path2dCache = new Map()
 let drawEntity = function () {
@@ -1743,7 +1747,13 @@ let drawEntity = function () {
 		if (config.hideMiniRenders === true && !render.real) return;
 		if (fade === 0 || alpha === 0) return;
 		if (config.lerpSize) drawSize = drawSize*fade;
-		ctx.globalAlpha = (config.glassMode ? .7 : 1) * alpha * fade
+		ctx.globalAlpha = (config.glassMode ? .7 : 1);
+        if (alpha !== 1) {
+            context = ctx2;
+            context.canvas.width = Math.max(context.canvas.height = drawSize * m.position.axis + ratio * 7.5 * instance.size, 1); //20,100
+            xx = context.canvas.width / 2 - drawSize * 2 * m.position.axis * m.position.middle.x * Math.cos(rot) / 4;
+            yy = context.canvas.height / 2 - drawSize * 2 * m.position.axis * m.position.middle.x * Math.sin(rot) / 4;
+        }
 		context.lineCap = "round";
 		context.lineJoin = config.pointy ? "miter" : "round";
 		if (render.real) switch (config.shaders) {
@@ -2069,6 +2079,14 @@ let drawEntity = function () {
 			}
 		}
 		ctx.globalAlpha = 1
+		if (context !== ctx) {
+            if (context.canvas.width && context.canvas.height) {
+                ctx.save();
+                ctx.globalAlpha = alpha * fade;
+                ctx.drawImage(context.canvas, x - xx, y - yy);
+                ctx.restore();
+            }
+        }
 		if (gunCache.size > 4000) {
 			console.log("[LOG] Cleared client gunCache")
 			gunCache.clear()

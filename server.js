@@ -65,6 +65,44 @@ function userSocket(playerId) {
 };
 
 // MORE COMPAT //
+// Ultra-fast atan2 implementation - replaces Math.atan2 prototype
+const PI = 3.141592653589793;
+const PI_2 = 1.5707963267948966;
+
+function ultraFastAtan2(y, x) {
+    // Fast NaN protection
+    if (y !== y || x !== x) return 0;
+    if (x === 0) return y > 0 ? PI_2 : y < 0 ? -PI_2 : 0;
+    
+    const absY = y < 0 ? -y : y;
+    const absX = x < 0 ? -x : x;
+    
+    let angle;
+    if (absY <= absX) {
+        const t = absY / absX;
+        angle = t / (1 + 0.28125 * t * t);
+    } else {
+        const t = absX / absY;
+        angle = PI_2 - t / (1 + 0.28125 * t * t);
+    }
+    
+    if (x < 0) {
+        angle = y >= 0 ? PI - angle : angle - PI;
+    } else if (y < 0) {
+        angle = -angle;
+    }
+    
+    return angle;
+}
+
+// Override Math.atan2 prototype
+Object.defineProperty(Math, 'atan2', {
+    value: ultraFastAtan2,
+    writable: true,
+    enumerable: false,
+    configurable: true
+});
+
 function oddify(number, multiplier = 1) {
     return number + ((number % 2) * multiplier);
 }
@@ -1470,7 +1508,7 @@ const Chain = Chainf;
             "SKILL_CHEAT_CAP": 60,
             "SKILL_LEAK": 0,
             "STEALTH": 4,
-            "MIN_SPEED": 0.000001,
+            "MIN_SPEED": Number.MIN_VALUE,
             "MIN_DAMAGE": 0,
             "MAX_FOOD": 400,
             "MAX_NEST_FOOD": 30,
@@ -7099,18 +7137,18 @@ const Chain = Chainf;
                         break;
                     case "smoothTargetOrSmoothhMotion":
                         if (this.source.control.target.length === 0) {
-                            this.facing += util.loopSmooth(this.facing, Math.atan2(this.velocity.y || c.MIN_SPEED, this.velocity.x || c.MIN_SPEED), 4 / room.speed);
+                            this.facing += util.loopSmooth(this.facing, Math.atan2(this.velocity.y, this.velocity.x), 4 / room.speed);
                         } else {
-                            this.facing += util.loopSmooth(this.facing, Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED), 4 / room.speed);
+                            this.facing += util.loopSmooth(this.facing, Math.atan2(t.y, t.x), 4 / room.speed);
                         }
                         break;
                     case "looseWithMotion":
                         if (!this.velocity.length) break;
                     case "smoothWithMotion":
-                        this.facing += util.loopSmooth(this.facing, Math.atan2(this.velocity.y || c.MIN_SPEED, this.velocity.x || c.MIN_SPEED), 4 / room.speed);
+                        this.facing += util.loopSmooth(this.facing, Math.atan2(this.velocity.y, this.velocity.x), 4 / room.speed);
                         break;
                     case "sans":
-                        this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        this.facing = Math.atan2(t.y, t.x);
                         entities.forEach((instance) => {
                             if (Math.abs(this.x - instance.x) < 70 && Math.abs(this.y - instance.y) < 70 && "bullet trap swarm drone minion tank miniboss crasher food".includes(instance.type) && instance.team != this.team) {
                                 this.velocity.x += 20 * Math.sin(instance.velocity.direction + (Math.PI / 2));
@@ -7123,7 +7161,7 @@ const Chain = Chainf;
                         });
                         break;
                     case "dodge":
-                        this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        this.facing = Math.atan2(t.y, t.x);
                         entities.forEach((instance) => {
                             if (Math.abs(this.x - instance.x) < 70 && Math.abs(this.y - instance.y) < 70 && "bullet trap swarm drone minion".includes(instance.type) && instance.team != this.team) {
                                 this.velocity.x += 50 * Math.sin(instance.velocity.direction + (Math.PI / 2));
@@ -7136,7 +7174,7 @@ const Chain = Chainf;
                         });
                         break;
                     case "bossdodge":
-                        this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        this.facing = Math.atan2(t.y, t.x);
                         entities.forEach((instance) => {
                             if (Math.abs(this.x - instance.x) < 70 && Math.abs(this.y - instance.y) < 70 && "bullet trap swarm drone minion".includes(instance.type) && instance.team != this.team) {
                                 this.velocity.x += 150 * Math.sin(instance.velocity.direction + (Math.PI / 2));
@@ -7149,7 +7187,7 @@ const Chain = Chainf;
                         });
                         break;
                     case "dronedodge":
-                        this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        this.facing = Math.atan2(t.y, t.x);
                         entities.forEach((instance) => {
                             if (Math.abs(this.x - instance.x) < 70 && Math.abs(this.y - instance.y) < 70 && "bullet trap swarm drone minion".includes(instance.type) && instance.team != this.team) {
                                 this.velocity.x += 50 * Math.sin(instance.velocity.direction + (Math.PI / 2));
@@ -7162,24 +7200,24 @@ const Chain = Chainf;
                         });
                         break;
                     case "toTarget":
-                        this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        this.facing = Math.atan2(t.y, t.x);
                         break;
                     case "locksFacing":
-                        if (!this.control.alt) this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        if (!this.control.alt) this.facing = Math.atan2(t.y, t.x);
                         break;
                     case "altLocksFacing":
-                        if (!this.control.fire) this.facing = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                        if (!this.control.fire) this.facing = Math.atan2(t.y, t.x);
                         break;
                     case "smoothToTarget":
-                        this.facing += util.loopSmooth(this.facing, Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED), 4 / room.speed);
+                        this.facing += util.loopSmooth(this.facing, Math.atan2(t.y, t.x), 4 / room.speed);
                         break;
                     case "slowToTarget":
-                        this.facing += util.loopSmooth(this.facing, Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED), 8 / room.speed);
+                        this.facing += util.loopSmooth(this.facing, Math.atan2(t.y, t.x), 8 / room.speed);
                         break;
                     case "bound":
                         let givenAngle;
                         if (this.turretRightClick ? this.control.alt : this.control.main) {
-                            givenAngle = Math.atan2(t.y || c.MIN_SPEED, t.x || c.MIN_SPEED);
+                            givenAngle = Math.atan2(t.y, t.x);
                             let diff = util.angleDifference(givenAngle, this.firingArc[0]);
                             if (Math.abs(diff) >= this.firingArc[1]) givenAngle = this.firingArc[0];
                         } else givenAngle = this.firingArc[0];
@@ -7549,6 +7587,7 @@ const Chain = Chainf;
                             let gx = gun.offset * Math.cos(gun.direction + gun.angle + gun.body.facing) + (1.35 * gun.length - gun.width * gun.settings.size / 2) * Math.cos(gun.angle + this.facing),
                                 gy = gun.offset * Math.sin(gun.direction + gun.angle + gun.body.facing) + (1.35 * gun.length - gun.width * gun.settings.size / 2) * Math.sin(gun.angle + this.facing);
                             gun.fire(gx, gy, this.skill);
+							console.log(gun)
                         }
                     }
                     // Explosions, phases and whatnot
@@ -12626,7 +12665,12 @@ function flatten(data, out, playerContext = null) {
 				grid.getCollisions(searchArea, (entity) => {
 					entity.deactivationTimer = 30;
 					entity.isActive = true;
-                    // Apply necessary checks from the original logic:
+                    
+                    if (entity.animation) {
+                        socket.animationsToDo.set(entity.id, entity.animation);
+                    }
+
+					// Apply necessary checks from the original logic:
                     if (
                         entity.isGhost ||
                         !entity.isAlive() ||
@@ -12639,10 +12683,6 @@ function flatten(data, out, playerContext = null) {
                         // If more precise frustum culling is needed, add a check here, but AABB is usually sufficient for performance gain.
                     ) {
                         return; // Skip entities that don't meet visibility criteria
-                    }
-
-                    if (entity.animation) {
-                        socket.animationsToDo.set(entity.id, entity.animation);
                     }
 
 					numberInView++

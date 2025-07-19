@@ -457,7 +457,7 @@ global._canvas = new (class Canvas {
 	}
 	_mouseDown(mouse) {
 		global.mousedown = true
-		if (!global._gameStart) return;
+		if (!global._gameStart || global.mobile) return;
 		switch (mouse.button) {
 			case 0:
 
@@ -583,13 +583,15 @@ global._canvas = new (class Canvas {
 		let width = global._screenWidth / innerWidth;
 		let height = global._screenHeight / innerHeight;
 		for (let touch of e.changedTouches) {
+			console.log(touch)
 			let mpos = {
 				x: touch.clientX * width,
 				y: touch.clientY * height
 			};
 			let id = touch.identifier;
 			let statIndex = global.clickables.stat.check({ x: mpos.x, y: mpos.y });
-			if (statIndex !== -1) {
+			if (statIndex !== -1 && (_this.statDragCd === undefined || (--_this.statDragCd) <= 0)) {
+				_this.statDragCd = 3
 				socket.talk("x", statIndex)
 			} else if (global.clickables.skipUpgrades.check(mpos) !== -1) {
 				global.clearUpgrades();

@@ -800,7 +800,7 @@ let gameDraw = function (ratio) {
 
 	// FILTERS
 	ctx.filter = ["none", "contrast(1000%)", "grayscale(100%)", "grayscale(28%)", "invert(100%)", "sepia(75%)"][["Disabled", "Saturated", "Grayscale", "Dramatic", "Inverted", "Sepia"].indexOf(config.filter)];
-	if (ctx.filter !== "none") ctx.drawImage(c, 0, 0, global._screenWidth, global._screenHeight);
+	if (ctx.filter !== "none") ctx.drawImage(global._canvas._cv, 0, 0, global._screenWidth, global._screenHeight);
 	ctx.filter = "none";
 	metrics._lastrender = getNow();
 };
