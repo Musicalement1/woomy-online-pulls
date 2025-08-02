@@ -446,6 +446,7 @@ let gameDraw = function (ratio) {
 				drawText("Room ID: " + window.selectedRoomId, x + len, y, 18, "#B6E57C", "right");
 				y -= 18;
 				if (global._debug > 1) {
+					const clientFpsTime = 
 					drawText("ClientFPS: " + metrics._rendertime, x + len, y, 14, metrics._rendertime > 15 ? color.guiwhite : color.orange, "right");
 					y -= 16;
 					drawText("Latency: " + metrics._latency + "ms", x + len, y, 14, metrics._latency < 375 ? color.guiwhite : color.orange, "right");

@@ -671,6 +671,7 @@ let socketInit = function () {
 						if (isNaN(global.player._renderv) || global.player._renderv === 0) global.player._renderv = 2000;
 						metrics._lastlag = metrics._lag;
 						metrics._lastuplink = Date.now()
+						config.movementSmoothing = lerp(config.movementSmoothing, Math.max(.5, Math.min(1, (1000/metrics._rendertime)/metrics._rendergap)), .05)
 					//} //else logger.info("This is old data! Last given time: " + global.player._time + "; offered packet timestamp: " + cam.time + ".");
 					socket.controls.talk();
 					updateTimes++;

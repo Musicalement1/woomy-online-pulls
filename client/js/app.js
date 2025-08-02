@@ -103,10 +103,10 @@ function RememberScriptingIsBannable() {
                 if (_gui._skills[8].cap !== 0 && _gui._skills[8].amount === _gui._skills[8].cap) rewardManager.unlockAchievement("dont_touch_me");
                 if (_gui._skills[9].cap !== 0 && _gui._skills[9].amount === _gui._skills[9].cap) rewardManager.unlockAchievement("indestructible");
 
-                if (rewardManager._statistics[8] < 225 && rewardManager._statistics[8] > 199) rewardManager.unlockAchievement("nuisance_exterminator");
-                if (rewardManager._statistics[8] < 15 && rewardManager._statistics[8] > 0) rewardManager.unlockAchievement("they_seek");
+                if (rewardManager._statistics[8] > 199) rewardManager.unlockAchievement("nuisance_exterminator");
+                if (rewardManager._statistics[8] > 0) rewardManager.unlockAchievement("they_seek");
 
-                if (rewardManager._statistics[10] < 110 && rewardManager._statistics[10] > 99) rewardManager.unlockAchievement("drones_are_life");
+                if (rewardManager._statistics[10] > 99) rewardManager.unlockAchievement("drones_are_life");
 
                 let max = _gui._leaderboard._display.length ? _gui._leaderboard._display[0].score : false;
                 if (!global._died && time > 30 && Math.min(1, _gui._skill.getScore() / max) === 1) rewardManager.unlockAchievement("the_leader");
@@ -175,7 +175,6 @@ let nextTime = 0;
 function _animloop() {
     global.animLoopHandle = (window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame)(_animloop);
     if (nextTime < performance.now()) {
-        global._fpsc++;
         try {
             if (global._tankMenuColorReal >= 185) global._tankMenuColorReal = 100;
             global._tankMenuColorReal += 0.16;

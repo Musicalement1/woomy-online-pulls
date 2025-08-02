@@ -3339,7 +3339,7 @@ const Chain = Chainf;
                 buttons.push(button);
             }
             function makeButtons() {
-                buttonLocs = [
+                let buttonLocs = [
                 ]
                 let i = 0;
                 for (const loc of room.door) {
@@ -6722,7 +6722,7 @@ const Chain = Chainf;
                     if (!this.isPlayer) return 0;
                     switch (this.label) {
                         case "Smasher": return void this.rewardManager(-1, "where_did_my_cannon_go");
-                        case "Mothership": return void this.rewardManager(-1, "miniship");
+                        case "Mini-Mothership": return void this.rewardManager(-1, "miniship");
                         case "Twin": return void this.rewardManager(-1, "fire_power");
                         case "Sniper": return void this.rewardManager(-1, "snipin");
                         case "Machine Gun": return void this.rewardManager(-1, "eat_those_bullets");
@@ -12302,7 +12302,7 @@ function flatten(data, out, playerContext = null) {
                                     })
                                     explainText.define(Class.text)
                                     explainText.name = "Ram into the buttons to press them"
-                                    explainText.size = 20
+                                    explainText.SIZE = 20
                                     explainText.sandboxId = room.id
 
                                     function spawnBotButton(status) {
