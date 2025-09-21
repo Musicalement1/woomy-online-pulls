@@ -13,10 +13,10 @@ const PORT = 80;
 // <<< ADDED: TURN Server Configuration >>>
 // =================================================================
 // IMPORTANT: This MUST be the same secret key you set as 'static-auth-secret' in your turnserver.conf
-const TURN_SECRET = "51d0b940-05cb-41d7-95c9-16d9845b4a19";
+const TURN_SECRET = process.env.TURN_SECRET||"51d0b940-05cb-41d7-95c9-16d9845b4a19";
 
 // IMPORTANT: Set this to the public IP or domain of your TURN server
-const TURN_SERVER_URI = "turn:74.208.44.199:3478";
+const TURN_SERVER_URI = process.env.TURN_SERVER_URL||"turn:74.208.44.199:3478";
 
 
 // =================================================================

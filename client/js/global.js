@@ -4,7 +4,8 @@ import { config } from "./config.js";
 import { mockups, getEntityImageFromMockup } from "./mockups.js";
 import { Smoothbar } from "./util.js";
 
-const global = {
+// must be var because its gets defiend immediately
+var global = {
 	_selectedServer: 0,
 	mobile: navigator.userAgentData?.mobile ?? /Mobi/i.test(navigator.userAgent),
 	guiMouse: {

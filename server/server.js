@@ -24,7 +24,6 @@ const bannedPlayers = [];
 
 worker.onmessage = function (msg) {
     const data = msg.data
-
     switch (data.type) {
         case "startServer":
             worker.postMessage({ type: "serverStartText", text: "Loading definitions..." })
@@ -4182,6 +4181,21 @@ const Chain = Chainf;
                 }
             }
         }
+		ioTypes.leashed = class extends IO {
+			constructor(body, range){
+				super(body);
+				this.range = range;
+			}
+			think() {
+				if(!this.body.leash) this.body.leash = {x: 0, y: 0, range: this.range};
+				this.body.leash.x = this.body.source.x;
+				this.body.leash.y = this.body.source.y;
+				if(((this.body.source.x-this.body.x)**2+(this.body.source.y-this.body.y)**2)**.5 > this.body.leash.range){
+					this.body.velocity.x += (this.body.source.x - this.body.x)/this.body.leash.range
+					this.body.velocity.y += (this.body.source.y - this.body.y)/this.body.leash.range
+				}
+			}
+		}
         ioTypes.alwaysFire = class extends IO {
             constructor(body) {
                 super(body);
@@ -6376,7 +6390,16 @@ const Chain = Chainf;
 					this.onDead = set.ON_DEAD || null
                     this.isObserver = set.IS_OBSERVER;
                     this.onOverride = set.ON_OVERRIDE;
-                    this.isSentry = set.IS_SENTRY || null
+                    this.isSentry = set.IS_SENTRY || null;
+					if(set.LEASHED){
+						if(typeof set.LEASHED === "number"){
+							this.controllers.push(new ioTypes.leashed(this, set.LEASHED));
+						}else{
+							console.error(`LEASHED must be a number`, this)
+						}
+					}else{
+						this.leash = null;
+					}
                     if (set.UPGRADES_TIER_1 != null)
                         for (let e of set.UPGRADES_TIER_1) this.upgrades.push({
                             class: exportNames[e.index],
@@ -6633,6 +6656,7 @@ const Chain = Chainf;
                     shield: this.shield.display(),
                     facing: this.facing,
                     vfacing: this.vfacing,
+					leash: this.leash,
                     twiggle: this.facingType !== "toTarget" || (this.facingType === "lmg" && this.control.fire), //this.facingType === "looseWithMotion" || this.facingType === "smoothWithMotion" || this.facingType === "spinSlowly" || this.facingType === "spinSlowly2" || this.facingType === "spinSlowly3" || this.facingType === "spinSlowly4" || this.facingType === "altSpin" || this.facingType === "fastSpin" || this.facingType === "autospin" || this.facingType === "autospin2" || this.facingType === "reverseAutospin" || this.facingType === "bitFastSpin" || this.facingType === "hadron" || this.facingType === "locksFacing" && this.control.alt || this.facingType === "hatchet" || this.facingType === "altLocksFacing" || this.facingType === "lmg" && this.control.fire,
                     layer: this.type === "mazeWall" ? 7 : this.passive && this.LAYER !== -1 ? 1 : this.LAYER === -1 ? this.bond == null ? this.type === "wall" ? 11 : this.type === "food" ? 10 : this.type === "tank" ? 5 : this.type === "crasher" ? 8 : 0 : this.bound.layer : this.LAYER,
                     color: this.color,
@@ -8236,6 +8260,7 @@ function flatten(data, out, playerContext = null) {
         flags |= data.label ? 128 : 0;
         flags |= data.sizeRatio[0] !== 1 ? 256 : 0;
         flags |= data.sizeRatio[1] !== 1 ? 512 : 0;
+		flags |= data.leash ? 1024 : 0;
 
         // Push core data
         out.push(data.id, flags, data.index, x, y, size, facing);
@@ -8253,6 +8278,7 @@ function flatten(data, out, playerContext = null) {
         if (flags & 128) out.push(data.label);
         if (flags & 256) out.push(data.sizeRatio[0]);
         if (flags & 512) out.push(data.sizeRatio[1]);
+		if (flags & 1024) out.push(data.leash.x, data.leash.y)
 
         // Push player-specific data
         if (data.type & 0x04) {

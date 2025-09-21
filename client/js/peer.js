@@ -47,18 +47,31 @@ class PeerWrapper {
 		});
 
 		this._readyResolve = null;
-		this.ready = new Promise(res => this._readyResolve = res);
+		this._readyRej = null;
+		this.ready = new Promise((res, rej) => {
+			 this._readyResolve = res;
+			 this._readyRej = rej;
+		});
 
 		this.peer.on('connection', conn => this._handleConnection(conn));
 	}
 
 	_handleConnection(conn) {
+		let disconnectTimeout = setTimeout(()=>{
+			console.log(`[Peer ${this.id}] Destroying peer, connection took too long`)
+			this.destroy();
+			this._readyRej?.("Connection took too long")
+		}, 3000)
 		conn.on('open', () => {
 			this.conn = conn;
 			this._setupConn(conn);
 			this._readyResolve?.();
+			clearTimeout(disconnectTimeout)
 		});
-		conn.on('error', console.error);
+		conn.on('error', (err)=>{
+			alert("connection error")
+			console.log(err)
+		});
 	}
 
 	connectTo(targetId) {
@@ -70,13 +83,16 @@ class PeerWrapper {
 				this._readyResolve?.();
 				resolve();
 			});
-			conn.on('error', reject);
+			conn.on('error', (err)=>{
+				alert("connection error")
+				console.log(err)
+			});
 		});
 	}
 
 	_setupConn(conn) {
 		conn.on('data', data => {
-			//console.log(`[Peer ${this.id}] Received:`, data)
+			// console.log(`[Peer ${this.id}] Received:`, data)
 			if(this.onmessage) this.onmessage(data)
 		});
 		conn.on('close', () => {

@@ -11,7 +11,9 @@ const ctx2 = canvas2.getContext("2d")
 ctx2.imageSmoothingEnabled = false;
 
 const gunCache = new Map()
-const path2dCache = new Map()
+const path2dCache = new Map();
+
+
 let drawEntity = function () {
 	function drawPoly(context, centerX, centerY, radius, sides, widthHeightRatio, ratio, scale) {
 		let angle = arguments.length > 8 && arguments[8] !== undefined ? arguments[8] : 0,
@@ -1891,6 +1893,55 @@ let drawEntity = function () {
 		if (scale < 1) {
 			currentContext.lineWidth *= scale;
 		}
+
+		// --- LEASH RENDERING ---
+		if (instance.leash) {
+			currentContext.save();
+			currentContext.strokeStyle = "black";
+			currentContext.lineWidth = instance.size*.6*fade
+			currentContext.globalAlpha = .25*fade; 
+			const renderedAnchorX = instance.render?.x ?? instance.x;
+			const renderedAnchorY = instance.render?.y ?? instance.y;
+			for (let i = 0; i < instance.leash.points.length; i++) {
+				let lastPoint = instance.leash.points[i - 1];
+				let currentPoint = instance.leash.points[i];
+				let nextPoint = instance.leash.points[i + 1];
+				if (lastPoint) {
+					currentPoint.vel.x += (lastPoint.pos.x - currentPoint.pos.x) * .5;
+					currentPoint.vel.y += (lastPoint.pos.y - currentPoint.pos.y) * .5;
+				}
+				if (nextPoint) {
+					currentPoint.vel.x += (nextPoint.pos.x - currentPoint.pos.x) * .5;
+					currentPoint.vel.y += (nextPoint.pos.y - currentPoint.pos.y) * .5;
+				}
+				if (i === 0) {
+					currentPoint.pos.x = renderedAnchorX;
+					currentPoint.pos.y = renderedAnchorY;
+					currentPoint.vel.x = 0;
+					currentPoint.vel.y = 0;
+				}
+				if (i === instance.leash.points.length - 1) {
+					currentPoint.pos.x = instance.leash.x;
+					currentPoint.pos.y = instance.leash.y;
+					currentPoint.vel.x = 0;
+					currentPoint.vel.y = 0;
+				}
+			}
+
+			currentContext.beginPath();
+			currentContext.moveTo(tankDrawX, tankDrawY);
+			for (let i = 0; i < instance.leash.points.length; i++) {
+				const canvasX = tankDrawX + ratio * (instance.leash.points[i].pos.x - renderedAnchorX);
+				const canvasY = tankDrawY + ratio * (instance.leash.points[i].pos.y - renderedAnchorY);
+				currentContext.lineTo(canvasX, canvasY);
+				currentContext.moveTo(canvasX, canvasY);
+				instance.leash.points[i].tick();
+			}
+			ctx.closePath()
+			currentContext.stroke();
+			currentContext.restore();
+		}
+		
 
 		// --- PROP RENDERING - LAYER -2 ---
 		if (m.props.length) {

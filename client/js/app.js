@@ -140,12 +140,16 @@ async function _startGame(gamemodeCode, joinRoomId) {
         console.log("...Server started!")
 		window.serverWorker.onerror = undefined;
         await multiplayer.wrmHost()
-        joinRoomId = await multiplayer.getHostRoomId();
+		joinRoomId = await multiplayer.getHostRoomId();
         document.getElementById("entityEditor").style.display = "block" // enable editor for host
     }
     window.loadingTextStatus = "Joining server..."
     window.loadingTextTooltip = ""
-    await makeSocket(joinRoomId)
+    await makeSocket(joinRoomId).catch((err)=>{
+		window.loadingTextStatus = "Connection Timed Out"
+		window.loadingTextTooltip = "There was an issue connecting to this player. Try a different room or make your own and play alone for the time being."
+		throw err;
+	})
 	window.loadingTextStatus = "Loading assets..."
 	window.loadingTextTooltip = "(0/0)"
 	await new Promise((res, rej)=>{

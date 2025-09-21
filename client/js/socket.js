@@ -12,6 +12,8 @@ import { lerp } from "./lerp.js";
 import { ASSET_MAGIC, loadAsset, setAsset } from "../../shared/assets.js";
 import "./consoleCommands.js"
 
+
+
 let socket;
 
 let lag = function () {
@@ -145,6 +147,19 @@ function Status() {
 	};
 }
 
+class RopePoint{
+	constructor(x, y){
+		this.pos = {x: x, y: y};
+		this.vel = {x: 0, y: 0};
+	}
+	tick(){
+		this.vel.x *= .7;
+		this.vel.y *= .7;
+		this.pos.x += this.vel.x;
+		this.pos.y += this.vel.y;
+	}
+}
+
 const process = function () {
 	const unpacking = {
 		new: function (entity) {
@@ -199,6 +214,19 @@ const process = function () {
 				entity.nameColor = flags & 64 ? convert.reader.next() : "#FFFFFF";
 				entity.label = flags & 128 ? convert.reader.next() : mockups.get(entity.index).name
 				entity.widthHeightRatio = [(flags & 256) ? convert.reader.next() : 1, (flags & 512) ? convert.reader.next() : 1];
+				if(flags & 1024){
+					if(!entity.leash){
+						entity.leash = {x: 0, y: 0, points: []};
+						entity.leash.x = convert.reader.next()
+						entity.leash.y = convert.reader.next()
+						for(let i = 0; i < 15; i++){
+							entity.leash.points.push(new RopePoint((entity.x+entity.leash.x)/2, (entity.y+entity.leash.y)/2))
+						}
+					}else{
+						entity.leash.x = lerp(entity.leash.x, convert.reader.next(), config.movementSmoothing)
+						entity.leash.y = lerp(entity.leash.y, convert.reader.next(), config.movementSmoothing)
+					}
+				}
 				entity.drawsHealth = type & 0x02;
 				entity.nameplate = type & 0x04;
 				entity.invuln = (type & 0x08 ? entity.invuln || Date.now() : 0);
@@ -451,7 +479,7 @@ function convertSlowGui(data) {
 let socketInit = function () {
 	return async function ag(roomId) {
 		let url = "ws://localhost:3001/"
-		await multiplayer.joinRoom(roomId);
+		await multiplayer.joinRoom(roomId, socket);
 
 		let fakeWebsocket = (url, roomHost) => {
 			return {

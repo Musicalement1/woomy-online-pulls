@@ -1,4 +1,4 @@
-import { fasttalk } from "./fasttalk.js";
+import { global } from "./global.js";
 import { PeerWrapper } from "./peer.js";
 
 window.connectedToWRM = false
@@ -92,7 +92,7 @@ multiplayer.getHostRoomId = async function(){
 		})
 	})
 }
-multiplayer.joinRoom = async function (roomId) {
+multiplayer.joinRoom = async function (roomId, socket) {
 	this.playerPeer = new PeerWrapper(await window.iceServers.fetchTurnCredentials())
 	window.loadingTextStatus = "Initalizing connection..."
     window.loadingTextTooltip = ""
@@ -124,9 +124,8 @@ multiplayer.joinRoom = async function (roomId) {
 		if(window.clientMessage) window.clientMessage(msg)
 	}
 	this.playerPeer.onclose = function(){
-		if(window.confirm("Lost connection to the host.\nClick \"OK\" to reload the page.")){
-			window.location.href = window.location.href
-		}
+		global._disconnected = 1;
+		global.message = global._disconnectReason = "The host has left the game"
 	}
 }
 multiplayer.getRooms = async function (){
