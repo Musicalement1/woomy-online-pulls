@@ -1530,39 +1530,40 @@ let drawEntity = function () {
 	}
 
 	const drawProp = (() => {
-		function addPoints(xx, yy, x, y) {
-			return [
-				x + xx,
-				y + yy
-			];
-		}
+	    function fixRot(xx, yy, angle, x, y) {
+	        let cos = Math.cos(angle), sin = Math.sin(angle);
+	        return [
+	            x * cos - y * sin + xx,
+	            x * sin + y * cos + yy
+	        ];
+	    }
 
-		function pointInit(drawSize, m, p, scaleInit, angle) {
-			let scale = scaleInit * drawSize / m.size * m.realSize * p.size;
-			return [
-				scale * (p.x / p.size + Math.cos(angle)),
-				scale * (p.y / p.size + Math.sin(angle))
-			];
-		}
+	    function pointInit(drawSize, m, p, scaleInit, angle) {
+	        let scale = scaleInit * drawSize / m.size * m.realSize * p.size;
+	        return [
+	            scale * (p.x / p.size + Math.cos(angle)),
+	            scale * (p.y / p.size + Math.sin(angle))
+	        ];
+	    }
 
-		function drawPropPoints(ctx, xx, yy, drawSize, m, p, scale, angle, c1, c2) {
-			let point = pointInit(drawSize, m, p, scale, angle);
-			if (c2 !== undefined) {
-				ctx.bezierCurveTo(
-					...addPoints(xx, yy, ...c1),
-					...addPoints(xx, yy, ...c2),
-					...addPoints(xx, yy, ...point)
-				);
-			} else if (c1 !== undefined) {
-				ctx.quadraticCurveTo(
-					...addPoints(xx, yy, ...pointInit(drawSize, m, p, ...c1)),
-					...addPoints(xx, yy, ...point)
-				);
-			} else {
-				ctx.lineTo(...addPoints(xx, yy, ...point));
-			}
-		}
-
+	    function drawPropPoints(ctx, xx, yy, rot, drawSize, m, p, scale, angle, c1, c2) {
+	        let point = pointInit(drawSize, m, p, scale, angle);
+	        if (c2 !== undefined) {
+	            ctx.bezierCurveTo(
+	                ...fixRot(xx, yy, rot, ...c1),
+	                ...fixRot(xx, yy, rot, ...c2),
+	                ...fixRot(xx, yy, rot, ...point)
+	            );
+	        } else if (c1 !== undefined) {
+	            ctx.quadraticCurveTo(
+	                ...fixRot(xx, yy, rot, ...pointInit(drawSize, m, p, ...c1)),
+	                ...fixRot(xx, yy, rot, ...point)
+	            );
+	        } else {
+	            ctx.lineTo(...fixRot(xx, yy, rot, ...point));
+	        }
+	    }
+	
 		function drawDiggerFace(context, p, rot, xx, yy, drawSize, m, source) {
 			if (!source || !source.render || !source.widthHeightRatio) {
 				return;
@@ -1639,119 +1640,122 @@ let drawEntity = function () {
 			return context.restore();
 		}
 
-		return function (ctx, p, pColor, rot, xx, yy, drawSize, m, source) {
-			ctx.save();
-			ctx.beginPath();
-			let path = p.shape instanceof Path2D ? p.shape : undefined;
-			let rpmAngle = (Date.now() * (p.rpm || 0) / 1000) % (2 * Math.PI);
-			let propRot = p.rpm === false ? p.angle : p.angle+rpmAngle;
-			let finalRot = p.lockRot === true ? propRot : rot+propRot
-			if(p.tankOrigin === true){
-				ctx.translate(xx, yy)
-				ctx.rotate(rot)
-				ctx.translate(-xx, -yy)
-			}
+	    return function (ctx, p, pColor, rot, xx, yy, drawSize, m, source) {
+	        ctx.save();
+	        ctx.beginPath();
+	        let path = p.shape instanceof Path2D ? p.shape : undefined;
+	        let rpmAngle = (Date.now() * (p.rpm || 0) / 1000) % (2 * Math.PI);
+	        let propRot = p.rpm === false ? p.angle : p.angle + rpmAngle;
+	        let finalRot = p.lockRot === true ? propRot : rot + propRot;
 
-			if (Array.isArray(p.shape)) {
-				for (let [x, y, cx1, cy1, cx2, cy2] of p.shape) {
-					drawPropPoints(ctx, xx, yy, drawSize, m, p,
-						Math.hypot(x, y), Math.atan2(x, y) + finalRot,
-						cx1 !== undefined ? [Math.hypot(cx1, cy1), Math.atan2(cx1, cy1)] : undefined,
-						cx2 !== undefined ? [Math.hypot(cx2, cy2), Math.atan2(cx2, cy2)] : undefined
-					);
-				}
-			} else if (typeof p.shape === 'number') {
-				// Special case
-				if (p.shape > 999) {
-					if (p.shape === 1000) {
-						if (!source?.render || !source.widthHeightRatio) return;
-						drawDiggerFace(ctx, p, rot, xx, yy, drawSize, m, source);
-						return;
-					}
-					throw new TypeError(`${p.shape} is not a valid prop shape`);
-				}
+	        if (p.tankOrigin === true) {
+	            ctx.translate(xx, yy);
+	            ctx.rotate(rot);
+	            ctx.translate(-xx, -yy);
+	        }
 
-				// Regular shape cases
-				if (p.shape > 0) { // Shape
-					for (let i = 0; i < p.shape; i++) {
-						drawPropPoints(ctx, xx, yy, p.scaleSize===true?drawSize+p.size:p.size, m, p,
-							1,
-							i*(2*Math.PI / p.shape) + Math.PI/2 + finalRot
-						);
-					}
-				} else if (p.shape < 0) { // Quadratic curve shape (like traps)
-					let scale = p.scaleSize===true?drawSize / m.size * m.realSize * p.size : p.size;
-					let dip = p.dip - 6 / (p.shape * p.shape);
+	        if (Array.isArray(p.shape)) {
+	            for (let [x, y, cx1, cy1, cx2, cy2] of p.shape) {
+	                drawPropPoints(ctx, xx, yy, finalRot, drawSize, m, p,
+	                    Math.hypot(x, y), Math.atan2(x, y),
+	                    cx1 !== undefined ? [Math.hypot(cx1, cy1), Math.atan2(cx1, cy1)] : undefined,
+	                    cx2 !== undefined ? [Math.hypot(cx2, cy2), Math.atan2(cx2, cy2)] : undefined
+	                );
+	            }
+	        } else if (typeof p.shape === 'number') {
+	            if (p.shape > 999) { // Special cases
+	                if (p.shape === 1000) {
+	                    if (!source?.render || !source.widthHeightRatio) return;
+	                    drawDiggerFace(ctx, p, rot, xx, yy, drawSize, m, source);
+						ctx.restore();
+	                    return;
+	                }
+	                throw new TypeError(`${p.shape} is not a valid prop shape`);
+	            }
+			
+	            // Regular polygon shapes
+	            if (p.shape > 0) {
+	                let size = p.scaleSize === true ? drawSize + p.size : p.size;
+	                for (let i = 0; i < p.shape; i++) {
+	                    drawPropPoints(ctx, xx, yy, finalRot, size, m, p,
+	                        1,
+	                        (2 * Math.PI / p.shape) * i + Math.PI / p.shape
+	                    );
+	                }
+	            } else if (p.shape < 0) { // Quadratic curve shapes (like traps)
+	                let scale = p.scaleSize === true ? (drawSize / m.size * m.realSize * p.size) : p.size;
+	                let dip = p.dip - 6 / (p.shape * p.shape);
+	                ctx.moveTo(...fixRot(p.x + xx, p.y + yy, finalRot, scale, 0));
+	                for (let i = 0; i < -p.shape; i++) {
+	                    let theta = -(i + 1) / p.shape * 2 * Math.PI;
+	                    let htheta = -(i + 0.5) / p.shape * 2 * Math.PI;
 
-					for (let i = 0; i < -p.shape + 1; i++) {
-						let theta = -(i + 1) / p.shape * 2 * Math.PI;
-						let htheta = -(i + 0.5) / p.shape * 2 * Math.PI;
+	                    ctx.quadraticCurveTo(
+	                        ...fixRot(p.x + xx, p.y + yy, finalRot,
+	                            scale * dip * Math.cos(htheta),
+	                            scale * dip * Math.sin(htheta)
+	                        ),
+	                        ...fixRot(p.x + xx, p.y + yy, finalRot,
+	                            scale * Math.cos(theta),
+	                            scale * Math.sin(theta)
+	                        )
+	                    );
+	                }
+	            } else { // Circle and other shape: 0 cases
+	                let r = p.scaleSize === true ? drawSize / m.size * m.realSize * p.size : p.size;
+	                let arcStart = finalRot;
+	                let arcEnd = 2 * Math.PI * p.arclen + arcStart;
 
-						ctx.quadraticCurveTo(
-							...addPoints(p.x + xx, p.y + yy,
-								scale * dip * Math.cos(htheta + finalRot),
-								scale * dip * Math.sin(htheta + finalRot)
-							),
-							...addPoints(p.x + xx, p.y + yy,
-								scale * Math.cos(theta + finalRot),
-								scale * Math.sin(theta + finalRot)
-							)
-						);
-					}
-				} else {
-					let r = p.scaleSize===true?drawSize / m.size * m.realSize * p.size : p.size;
-					let arcStart = rpmAngle + p.angle;
-					let arcEnd = 2 * Math.PI * p.arclen + arcStart;
+	                ctx.arc(p.x + xx, p.y + yy, r, arcStart, arcEnd, false);
 
-					if (p.ring !== undefined) {
-						ctx.arc(p.x + xx, p.y + yy, r * p.ring, arcEnd, arcStart, true);
-					} else if (p.isAura) {
-						let grad = getGradient(pColor)
+	                if (p.ring !== undefined) {
+	                    ctx.arc(p.x + xx, p.y + yy, r * p.ring, arcEnd, arcStart, true);
+	                }
+				
+	                if (p.isAura) {
+	                    let grad = getGradient(pColor)
+	                    let x = p.x + xx | 0;
+	                    let y = p.y + yy | 0;
 
-						let x = p.x + xx | 0;
-						let y = p.y + yy | 0;
+	                    ctx.save()
+	                    ctx.translate(x, y)
+	                    ctx.scale(r, r)
+	                    ctx.fillStyle = grad;
+	                    ctx.beginPath()
+	                    ctx.arc(0, 0, 1, 0, 2 * Math.PI)
+	                    ctx.closePath()
+	                    ctx.fill()
+	                    ctx.restore()
+	                    ctx.restore() // Corresponds to the main ctx.save() at the top
+	                    return;
+	                }
+	            }
+	        } else if (path) {
+	            let radius = (p.scaleSize === true ? drawSize + p.size : p.size) / path.path2dDiv
+	            ctx.translate(xx, yy);
+	            ctx.scale(radius, radius);
+	            ctx.lineWidth /= radius;
+	            ctx.rotate(finalRot);
+	        }
 
-						ctx.save()
-						ctx.translate(x, y)
-						ctx.scale(r, r)
-						ctx.fillStyle = grad;
-						ctx.beginPath()
-						ctx.arc(0, 0, 1, 0, 2 * Math.PI)
-						ctx.closePath()
-						ctx.fill()
-						ctx.restore()
-						ctx.restore()
-						return; 
-					} else { // circle
-						ctx.arc(p.x + xx, p.y + yy, r, arcStart, arcEnd, false);
-					}
-				}
-			} else if (path){		
-				let radius = (p.scaleSize === true ? drawSize + p.size : p.size) / path.path2dDiv
-				ctx.translate(xx, yy);
-				ctx.scale(radius, radius);
-				ctx.lineWidth /= radius;
-				ctx.rotate(finalRot);
-			}
 
-			if(path){
-				if (p.stroke) ctx.stroke(path);
-				if (p.fill) ctx.fill(path);
-			}else{
-				if (p.loop) ctx.closePath();
-				if (p.stroke) ctx.stroke();
-				if (p.color >= 1000) {
-					ctx.save();
-					ctx.clip();
-					specialColors[p.color](ctx, source);
-					ctx.restore();
-				} else if (p.fill) {
-					ctx.fill();
-				}
-			}
-			ctx.restore();
-			ctx.lineJoin = "round";
-		};
+			if (path) {
+	            if (p.stroke) ctx.stroke(path);
+	            if (p.fill) ctx.fill(path);
+	        } else {
+	            if (p.loop) ctx.closePath();
+	            if (p.stroke) ctx.stroke();
+	            if (p.color >= 1000) {
+	                ctx.save();
+	                ctx.clip();
+	                specialColors[p.color](ctx, source);
+	                ctx.restore();
+	            } else if (p.fill) {
+	                ctx.fill();
+	            }
+	        }
+	        ctx.restore();
+	    };
 	})();
 
 

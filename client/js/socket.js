@@ -83,7 +83,7 @@ const GunContainer = function () {
 			} else if (g.position > .3) {
 				g.position = .3
 			}
-			if (g.motion > 0) g.motion *= .68;
+			if (g.motion > 0) g.motion *= .76;
 		}
 	}
 	return function (n) {
@@ -105,7 +105,7 @@ const GunContainer = function () {
 				}
 			},
 			fire: function (i, power) {
-				if (a[i].isUpdated) a[i].motion += Math.sqrt(power) / 20;
+				if (a[i].isUpdated) a[i].motion += Math.sqrt(power) / 30;
 				a[i].isUpdated = 0;
 			},
 			length: a.length
