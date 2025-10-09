@@ -1,7 +1,7 @@
 import { util, Smoothbar } from "../util.js";
 import { global } from "../global.js";
 import { ctx, drawBar, drawGUIPolygon, drawGuiCircle, drawGuiLine, drawGuiRect, drawGuiRoundRect, drawText, measureText, _clearScreen, getGradient } from "./canvas.js"
-import { color, getColor, getZoneColor, hslToColor } from "../colors.js"
+import { color, getColor, getZoneColor, hslToColor, getColorDark } from "../colors.js"
 import { mixColors } from "../../shared/mix_colors.js";
 import { config } from "../config.js";
 import { lerp, lerpAngle } from "../lerp.js";
@@ -145,6 +145,65 @@ let gameDraw = function (ratio) {
 		if (!config.screenshotMode) frameplate.push([x, y, instance, ratio, global.player._canSeeInvisible ? instance.alpha + .5 : instance.alpha]);
 		ctx.globalAlpha = 1;
 	};
+	// LASERS - Using fillRect (much faster than stroke)
+	for(let [id, laser] of laserMap){
+	    const lx1 = ratio * laser.x - px;
+	    const ly1 = ratio * laser.y - py;
+	    const lx2 = ratio * laser.x2 - px;
+	    const ly2 = ratio * laser.y2 - py;
+	
+	    const dx = lx2 - lx1;
+	    const dy = ly2 - ly1;
+	    const len = Math.sqrt(dx * dx + dy * dy);
+	
+	    if(len === 0) continue;
+	
+	    const angle = Math.atan2(dy, dx);
+	    const width = laser.width * ratio * laser.fade;
+	
+	    if (config.performanceMode === false && config.animatedLasers === true) {
+	        const laserColor = getColor(laser.color);
+	        const darkColor = getColorDark(laserColor);
+	        const flicker = 0.7 + Math.random() * 0.3;
+		
+	        ctx.save();
+	        ctx.translate(lx1, ly1);
+	        ctx.rotate(angle);
+		
+	        const layers = 12;
+	        for(let i = 0; i < layers; i++){
+	            const t = i / (layers - 1);
+	            const layerWidth = width * (1 - t * 0.7) + i*Math.random();
+			
+	            let lcolor;
+	            if(t < 0.5) {
+	                const blend = t * 2;
+	                lcolor = mixColors(darkColor, mixColors(laserColor, color.white, .6), blend);
+	            } else {
+	                const blend = (t - 0.5) * 2;
+	                lcolor = mixColors(mixColors(laserColor, color.white, .6), laserColor, blend);
+	            }
+			
+	            ctx.fillStyle = lcolor;
+	            ctx.globalAlpha = .25 + .25/layers
+	            ctx.fillRect(0, -layerWidth / 2, len, layerWidth);
+	        }
+		
+	        ctx.restore();
+	        ctx.globalAlpha = 1;
+	    } else {
+	        ctx.save();
+	        ctx.translate(lx1, ly1);
+	        ctx.rotate(angle);
+	        ctx.fillStyle = getColor(laser.color);
+	        ctx.globalAlpha = 0.35;
+	        ctx.fillRect(0, -width / 2, len, width);
+	        ctx.restore();
+	        ctx.globalAlpha = 1;
+	    }
+	}
+
+	// NAME PLATES
 	ctx.shadowBlur = 0;
 	ctx.shadowOffsetX = 0;
 	ctx.shadowOffsetY = 0;
@@ -152,7 +211,6 @@ let gameDraw = function (ratio) {
 		drawHealth(...frameplate[i]);
 		ctx.globalAlpha = 1;
 	};
-
 
 	// BLACKOUT
 	if (global._blackout) {

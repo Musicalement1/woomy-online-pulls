@@ -65,7 +65,6 @@ let mockups = {
 		},
 		guns: [],
 		turrets: [],
-		lasers: [],
 		props: []
 	},
 	applyDefaults: (data) => {
@@ -198,9 +197,6 @@ function getEntityImageFromMockup(index, color) {
 			o.facing = t.direction + t.angle;
 			return o;
 		}),
-		lasers: {
-			length: mockup.lasers.length
-		},
 		props: {
 			length: mockup.props.length
 		}

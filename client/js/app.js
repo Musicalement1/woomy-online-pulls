@@ -11,6 +11,7 @@ import { gameDraw } from "./drawing/gameDraw.js"
 import { multiplayer } from "./multiplayer.js";
 import "./mainmenu.js";
 import "./joinMenu.js";
+import { config } from "./config.js";
 
 if ('serviceWorker' in navigator) {
 	window.addEventListener('load', () => {
@@ -194,7 +195,7 @@ function _animloop() {
                     lastPing = global.time;
                     socket.ping();
 					doingPing = true;
-                    metrics._rendertime = renderTimes;
+                    metrics._rendertime = renderTimes * (config.performanceMode ? 2 : 1);
                     renderTimes = 0;
                     metrics._updatetime = updateTimes;
                     updateTimes = 0;

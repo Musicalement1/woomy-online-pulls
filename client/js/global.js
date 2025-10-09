@@ -302,9 +302,6 @@ global.player = {
 			"length": 0
 		},
 		"turrets": [],
-		"lasers": {
-			"length": 0
-		},
 		"props": {
 			"length": 0
 		}
@@ -499,7 +496,8 @@ window.getNow = function () {
 	return Date.now() - serverStart;
 };
 window.entityArr = [];
-window.entityMap = new Map()
+window.entityMap = new Map();
+window.laserMap = new Map();
 window.getRatio = function () {
 	return Math.max(global._screenWidth / global.player._renderv, global._screenHeight / global.player._renderv / 9 * 16);
 };

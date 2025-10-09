@@ -65,6 +65,7 @@ const convert = {
 		}
 	},
 
+	lasers: convertLasers,
 	data: convertData,
 	fastGui: convertFastGui,
 	slowGui: convertSlowGui,
@@ -326,6 +327,62 @@ const process = function () {
 		return unpacking.new(z);
 	};
 }();
+
+function convertLasers(){
+	for (let i = 0, len = convert.reader.next(); i < len; i++) {
+		const id = convert.reader.next();
+		let laser = laserMap.get(id);
+		if(!laser){
+			laser = {
+				id: id,
+				x: convert.reader.next(),
+				_x: 0,
+				y: convert.reader.next(),
+				_y: 0,
+				x2: convert.reader.next(),
+				_x2: 0,
+				y2: convert.reader.next(),
+				_y2: 0,
+				color: convert.reader.next(),
+				width: 0,
+				_width: convert.reader.next(),
+				maxDur: convert.reader.next(),
+				dur: convert.reader.next(),
+				falloff: convert.reader.next(),
+				shouldDie: 0,
+				fade: 1,
+				gradient: undefined
+			}
+		}else{
+			laser._x = convert.reader.next();
+			laser.x = lerp(laser.x, laser._x, config.movementSmoothing)
+			laser._y = convert.reader.next();
+			laser.y = lerp(laser.y, laser._y, config.movementSmoothing)
+			laser._x2 = convert.reader.next();
+			laser.x2 = lerp(laser.x2, laser._x2, config.movementSmoothing)
+			laser._y2 = convert.reader.next();
+			laser.y2 = lerp(laser.y2, laser._y2, config.movementSmoothing)
+			laser.color = convert.reader.next();
+			laser._width = 100/convert.reader.next();
+			laser.width = lerp(laser.width, laser._width, config.movementSmoothing)
+			laser.maxDur = convert.reader.next();
+			laser.dur = convert.reader.next();
+			laser.falloff = convert.reader.next();
+		}
+		laser.shouldDie = 0;
+		laserMap.set(id, laser);
+	}
+
+	for(let [_, laser] of laserMap){
+		laser.shouldDie++;
+		if(laser.shouldDie > 1){
+			laser.fade = lerp(laser.fade, 0, config.movementSmoothing)
+			if(laser.fade < 0.01){
+				laserMap.delete(laser.id);
+			}
+		}
+	}
+}
 
 function convertData() {
 	const updatedEntityIds = new Set(); // Keep track of IDs received in this packet
@@ -697,6 +754,7 @@ let socketInit = function () {
 						global.player._lastUpdate = cam.time;
 						convert.reader.set(m, 5);
 						convert.fastGui();
+						convert.lasers();
 						convert.data();
 						global.player._cx = lerp(global.player._cx||cam.x, cam.x, config.movementSmoothing);
 						global.player._cy = lerp(global.player._cy||cam.y, cam.y, config.movementSmoothing);

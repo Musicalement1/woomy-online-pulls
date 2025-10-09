@@ -937,7 +937,7 @@ function getGradient(color, colorStop = 0) {
 }
 
 setInterval(() => {
-	console.log("Gradient Cache Cleared", gradientCache.size)
+	console.log("Aura Gradient Cache Cleared", gradientCache.size)
 	gradientCache.clear()
 }, 60000)
 

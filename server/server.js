@@ -1012,6 +1012,11 @@ async function startServer(configSuffix, defExports, displyNameOverride, display
             }
         }
 
+        getCell(x, y){
+            const key = ((x >> this.cellShift) << 16) | ((y >> this.cellShift) & 0xFFFF);
+            return this.grid.get(key);
+        }
+
         getCollisions(object, optFunct) {
             const result = this._resultPool;
             result.length = 0;
@@ -1618,7 +1623,6 @@ const Chain = Chainf;
                     let finalTank = defs[Math.random() * defs.length | 0][1]
                     finalTank.GUNS = []
                     finalTank.TURRETS = []
-                    finalTank.LASERS = []
                     finalTank.PROPS = []
 
                     for (let i = 0; i < CONFIG.usedTanks; i++) {
@@ -2201,16 +2205,6 @@ const Chain = Chainf;
                         out.angle = rounder(t.bound.angle);
                         return applyDefaults(out);
                     }),
-                    lasers: e.lasers.map(l => ({
-                        offset: rounder(l.offset),
-                        direction: rounder(l.direction),
-                        length: rounder(l.length),
-                        width: rounder(l.width),
-                        aspect: rounder(l.aspect),
-                        angle: rounder(l.angle),
-                        color: rounder(l.color),
-                        laserWidth: rounder(l.laserWidth)
-                    })),
                     props: e.props.map(p => ({
                         size: rounder(p.size),
                         x: rounder(p.x),
@@ -5483,15 +5477,20 @@ const Chain = Chainf;
                 }
 				// Client lerp makes it look like bullets dont come from barrels
 				const lerpComp = .75; // % of barrel length to spawn bullet (1-2)
-                let o = new Entity({
-                    x: this.body.x + this.body.size * gx - (this.length*s.x) * lerpComp,
-                    y: this.body.y + this.body.size * gy - (this.length*s.y) * lerpComp
-                }, this.master.master);
-                o.velocity = s;
-                o.initialBulletSpeed = speed;
-                this.bulletInit(o);
-                o.coreSize = o.SIZE;
-                return o;
+				if(this.bulletTypes[0].TYPE === "laser"){
+					new Laser(this.master, this.body, this.body.facing);
+					return;
+				}else{
+                	let o = new Entity({
+                	    x: this.body.x + this.body.size * gx - (this.length*s.x) * lerpComp,
+                	    y: this.body.y + this.body.size * gy - (this.length*s.y) * lerpComp
+                	}, this.master.master);
+                	o.velocity = s;
+                	o.initialBulletSpeed = speed;
+                	this.bulletInit(o);
+                	o.coreSize = o.SIZE;
+                	return o;
+				}
             }
             bulletInit(o) {
                 o.source = this.body;
@@ -5585,36 +5584,6 @@ const Chain = Chainf;
                     out[property] *= this.natural[property];
                 }
                 return out;
-            }
-        }
-        class Laser {
-            constructor(body, info) {
-                // basic info y'know
-                this.body = body;
-                this.master = body.source;
-                this.control = {
-                    target: new Vector(0, 0),
-                    goal: new Vector(0, 0),
-                    main: false,
-                    alt: false,
-                    fire: false
-                };
-                // dimensions, basically ripped from guns
-                let position = info.POSITION;
-                this.length = position[0] / 10;
-                this.width = position[1] / 10;
-                this.aspect = position[2];
-                let offset = new Vector(position[3], position[4]);
-                this.angle = position[5] * Math.PI / 180;
-                this.direction = offset.direction;
-                this.offset = offset.length / 10;
-                // if there are properties, use them
-                if (info.PROPERTIES != null) {
-                    let props = info.PROPERTIES;
-                    this.color = props.COLOR;
-                    this.dps = props.DPS;
-                    this.laserWidth = props.WIDTH;
-                }
             }
         }
         class Prop {
@@ -5783,6 +5752,160 @@ const Chain = Chainf;
             }
         }
 
+
+		const lasers = new Set();
+		let laserId = 0;
+
+		class Laser {
+		    constructor(master, startPos, angle, settings = {}) {
+		        this.master = master;
+				this.color = master.color;
+		        this.id = laserId++;
+		        this.hitEntities = new Set();
+			
+		        this.angle = angle + Math.PI / 2;
+		        this.startPoint = { x: startPos.x, y: startPos.y }; // Use a copy
+			
+		        this.layer = settings.LAYER ?? 0;
+		        this.width = settings.WIDTH ?? 5;
+		        this.range = settings.RANGE ?? 10000;
+		        this.duration = settings.DURATION ?? 300;
+		        this.maxDuration = this.duration;
+		        this.pierce = settings.PIERCE ?? 3;
+		        this.damage = settings.DAMAGE ?? .1;
+		        this.damageFalloff = settings.DAMAGE_FALLOFF ?? 0.8;
+			
+		        this.endPoint = { x: 0, y: 0 };
+				this.calcEndPoint();
+		        this.visualEndPoint = { x: this.endPoint.x, y: this.endPoint.y };
+		        
+				lasers.add(this);
+		    }
+		
+		    calcEndPoint() {
+		        this.endPoint.x = this.startPoint.x + this.range * Math.sin(this.angle);
+		        this.endPoint.y = this.startPoint.y - this.range * Math.cos(this.angle);
+		    }
+		
+		    tick() {
+		        if (this.maxDuration < this.duration) {
+		            this.maxDuration = this.duration;
+		        }
+		        if (this.duration-- <= 0) {
+		            lasers.delete(this);
+		            return;
+		        }
+		        this.calcEndPoint(); // Recalculate in case range/angle changed
+		        this.hitEntities.clear();
+		        this.visualEndPoint = { x: this.endPoint.x, y: this.endPoint.y };
+			
+		        const collectedHits = [];
+			
+		        // 1. Traverse grid to gather all potential targets along the laser's path
+		        const dx = this.endPoint.x - this.startPoint.x;
+		        const dy = this.endPoint.y - this.startPoint.y;
+		        let cellX = this.startPoint.x >> grid.cellShift;
+		        let cellY = this.startPoint.y >> grid.cellShift;
+		        const endCellX = this.endPoint.x >> grid.cellShift;
+		        const endCellY = this.endPoint.y >> grid.cellShift;
+		        const stepX = Math.sign(dx);
+		        const stepY = Math.sign(dy);
+		        const cellSize = 1 << grid.cellShift;
+		        const tDeltaX = dx === 0 ? Infinity : Math.abs(cellSize / dx);
+		        const tDeltaY = dy === 0 ? Infinity : Math.abs(cellSize / dy);
+		        const nextBoundaryX = (cellX + (stepX > 0 ? 1 : 0)) * cellSize;
+		        const nextBoundaryY = (cellY + (stepY > 0 ? 1 : 0)) * cellSize;
+		        let tMaxX = dx === 0 ? Infinity : (nextBoundaryX - this.startPoint.x) / dx;
+		        let tMaxY = dy === 0 ? Infinity : (nextBoundaryY - this.startPoint.y) / dy;
+			
+                const processCell = (cx, cy) => {
+                    const cellContent = grid.getCell(cx * cellSize, cy * cellSize);
+                    if (cellContent) {
+                        for (const entity of cellContent){
+							if (entity.team === this.master.team || this.hitEntities.has(entity)) return;
+             				this.hitEntities.add(entity);
+		            		const collisionDetails = this.getCollisionDetails(entity);
+		            		if (collisionDetails){
+								collectedHits.push(collisionDetails);
+		        			}
+						}
+                    }
+                };
+			
+		        processCell(cellX, cellY);
+		        while (collectedHits.length < this.pierce && (cellX !== endCellX || cellY !== endCellY)) {
+		            if (tMaxX < tMaxY) {
+		                tMaxX += tDeltaX;
+		                cellX += stepX;
+		            } else {
+		                tMaxY += tDeltaY;
+		                cellY += stepY;
+		            }
+		            processCell(cellX, cellY);
+		        }
+			
+		        // 3. Sort hits by distance to handle piercing correctly
+		        collectedHits.sort((a, b) => a.distanceSq - b.distanceSq);
+			
+		        // 4. Apply damage to pierced targets and update visual end point
+                const piercedCount = Math.min(collectedHits.length, this.pierce);
+                if (piercedCount > 0) {
+                    for (let i = 0; i < piercedCount; i++) {
+                        this.collide(collectedHits[i].entity);
+                    }
+                }
+				if(piercedCount === this.pierce){
+                    this.visualEndPoint = collectedHits[this.pierce-1].closestPoint;
+				}
+			}
+		
+		    getCollisionDetails(entity) {
+		        const laserDX = this.endPoint.x - this.startPoint.x;
+		        const laserDY = this.endPoint.y - this.startPoint.y;
+		        const lenSq = laserDX * laserDX + laserDY * laserDY;
+		        if (lenSq === 0) return null;
+			
+		        const dot = ((entity.x - this.startPoint.x) * laserDX + (entity.y - this.startPoint.y) * laserDY);
+		        const t = Math.max(0, Math.min(1, dot / lenSq));
+			
+                const closestX = this.startPoint.x + t * laserDX;
+                const closestY = this.startPoint.y + t * laserDY;
+		        const distanceX = entity.x - closestX;
+		        const distanceY = entity.y - closestY;
+		        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+			
+		        const totalRadius = entity.size*2 + this.width/2;
+		        if (distanceSquared < (totalRadius * totalRadius)) {
+		            const distFromStartSq = (closestX - this.startPoint.x) ** 2 + (closestY - this.startPoint.y) ** 2;
+		            return {
+		                entity: entity,
+		                closestPoint: { x: closestX, y: closestY },
+		                distanceSq: distFromStartSq
+		            };
+		        }
+		        return null;
+		    }
+		
+            collide(entity) {
+                entity.damageReceived += this.damage
+            }
+		
+            addToPacket(packetArr) {
+                packetArr.push(
+                    this.id,
+                    this.startPoint.x,
+                    this.startPoint.y,
+                    this.visualEndPoint.x,
+                    this.visualEndPoint.y,
+					this.color,
+                    this.width,
+                    this.maxDuration,
+                    this.duration,
+                    this.damageFalloff
+                );
+            }
+		}
+
         class Entity {
             constructor(position, master = this) {
                 this.isGhost = false;
@@ -5874,7 +5997,6 @@ const Chain = Chainf;
                 };
                 this.guns = [];
                 this.turrets = [];
-                this.lasers = [];
                 this.props = [];
                 this.upgrades = [];
                 this.settings = {
@@ -6199,7 +6321,6 @@ const Chain = Chainf;
                 this.guns = [];
                 for (let o of this.turrets) o.destroy();
                 this.turrets = [];
-                this.lasers = [];
                 this.props = [];
             }
             minimalDefine(set) {
@@ -6281,11 +6402,6 @@ const Chain = Chainf;
                         }
                     };
                 };
-                if (set.LASERS != null) {
-                    let newLasers = [];
-                    for (let def of set.LASERS) newLasers.push(new Laser(this, def));
-                    this.lasers = newLasers;
-                }
                 if (set.PROPS != null) {
                     let newProps = [];
                     for (let def of set.PROPS) newProps.push(new Prop(def));
@@ -6484,11 +6600,6 @@ const Chain = Chainf;
                             i++;
                         }
                         this.guns = newGuns;
-                    }
-                    if (set.LASERS != null) {
-                        let newLasers = [];
-                        for (let def of set.LASERS) newLasers.push(new Laser(this, def));
-                        this.lasers = newLasers;
                     }
                     if (set.PROPS != null) {
                         let newProps = [];
@@ -11376,6 +11487,10 @@ function flatten(data, out, playerContext = null) {
 					return true;
                 });
 
+				lasers.forEach((laser)=>{
+					laser.tick();
+				})
+
                 room.wallCollisions = []
 
 
@@ -12846,6 +12961,9 @@ function flatten(data, out, playerContext = null) {
                     //player.body = null; // Dereference the dead body
                 }
 
+				const laserPacket = [];
+				lasers.forEach((l)=>l.addToPacket(laserPacket))
+
 
                 // Send the update packet to the client
                 socket.talk(
@@ -12857,6 +12975,8 @@ function flatten(data, out, playerContext = null) {
                     fov + .5 | 0, // FOV (rounded)
                     // camera.vx, camera.vy, // Omitted velocity as per original packet format change
                     (player.gui ? player.gui() : []), // Player GUI data (assuming player.gui() is defined elsewhere and returns an array)
+					lasers.size,
+					laserPacket,
                     numberInView, // Count of visible entities
                     visible.flat() // Flattened data for visible entities
                 );

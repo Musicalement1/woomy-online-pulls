@@ -253,6 +253,8 @@ config.Woomy = (() => {
 	new Setting("screenshotMode", "Screenshot Mode", "boolean", false);
 	new Setting("hideMiniRenders", "Hide Mini-Renders", "boolean", false);
 	new Setting("lerpSize", "Lerp Entity Sizes", "boolean", true);
+	new Setting("performanceMode", "Performance Mode", "boolean", false);
+	new Setting("animatedLasers", "Animated Lasers", "boolean", true);
 	new Setting("mainMenuStyle", "Menu Dark Mode", "boolean", false, enabled => {
 		const setProperties = vars => {
 			if (enabled) {
