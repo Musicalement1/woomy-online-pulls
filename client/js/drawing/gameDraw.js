@@ -122,7 +122,13 @@ let gameDraw = function (ratio) {
 			global.player.rendershiftx = x
 			global.player.rendershifty = y
 			global.player.team = instance.team;
-			instance.render.facing = (!instance.twiggle && !global._died && !global._forceTwiggle) ? Math.atan2(global._target._y - y, global._target._x - x) : motion.predictFacing(instance.render.facing, instance.facing);
+
+			if(config.clientSideAim === true){
+				instance.render.facing = (!instance.twiggle && !global._died && !global._forceTwiggle) ? Math.atan2(global._target._y - y, global._target._x - x) : motion.predictFacing(instance.render.facing, instance.facing);
+			} else {
+				instance.render.facing = motion.predictFacing(instance.render.facing, instance.facing);
+			}
+
 			// Save information about the player
 			global.player._nameColor = instance.nameColor
 			//console.log(mockups[instance.index])
@@ -159,12 +165,11 @@ let gameDraw = function (ratio) {
 	    if(len === 0) continue;
 	
 	    const angle = Math.atan2(dy, dx);
-	    const width = laser.width * ratio * laser.fade;
+	    let width = laser.width * ratio * laser.fade;
 	
 	    if (config.performanceMode === false && config.animatedLasers === true) {
 	        const laserColor = getColor(laser.color);
 	        const darkColor = getColorDark(laserColor);
-	        const flicker = 0.7 + Math.random() * 0.3;
 		
 	        ctx.save();
 	        ctx.translate(lx1, ly1);
@@ -173,15 +178,14 @@ let gameDraw = function (ratio) {
 	        const layers = 12;
 	        for(let i = 0; i < layers; i++){
 	            const t = i / (layers - 1);
-	            const layerWidth = width * (1 - t * 0.7) + i*Math.random();
-			
+	            const layerWidth = width * (1 - t * 0.7);
 	            let lcolor;
 	            if(t < 0.5) {
 	                const blend = t * 2;
-	                lcolor = mixColors(darkColor, mixColors(laserColor, color.white, .6), blend);
+	                lcolor = mixColors(darkColor, mixColors(laserColor, color.white, .8), blend);
 	            } else {
 	                const blend = (t - 0.5) * 2;
-	                lcolor = mixColors(mixColors(laserColor, color.white, .6), laserColor, blend);
+	                lcolor = mixColors(mixColors(laserColor, color.white, .8), laserColor, blend);
 	            }
 			
 	            ctx.fillStyle = lcolor;
@@ -226,6 +230,25 @@ let gameDraw = function (ratio) {
 		darknessCtx.fillRect(0, 0, darknessCanvas.width, darknessCanvas.height);
 		darknessCtx.globalCompositeOperation = "lighter";
 		darknessCtx.translate(global._screenWidth / 2 / divisor, global._screenHeight / 2 / divisor);
+
+		for(let [id, laser] of laserMap){
+	    	const lx1 = ratio * laser.x - px;
+	    	const ly1 = ratio * laser.y - py;
+	    	const lx2 = ratio * laser.x2 - px;
+	    	const ly2 = ratio * laser.y2 - py;
+	    	const laserColor = getColor(laser.color);
+			const ran = Math.random();
+	    	darknessCtx.save();
+			darknessCtx.lineWidth = (laser.width * (1 + .1 * ran)) * ratio * laser.fade;
+	    	darknessCtx.strokeStyle = laserColor;
+	    	darknessCtx.globalAlpha = .04 + .01 * ran
+			darknessCtx.beginPath();
+			darknessCtx.moveTo(lx1, ly1);
+			darknessCtx.lineTo(lx2, ly2);
+			darknessCtx.stroke();
+			darknessCtx.restore();
+		}
+
 		for (let i = 0; i < entityArr.length; i++) {
 			let instance = entityArr[i],
 				x = ratio * instance.render.x - px,

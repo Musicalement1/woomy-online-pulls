@@ -1437,7 +1437,7 @@ const Chain = Chainf;
             "BETA": 0,
             "networkFrontlog": 1,
             "networkFallbackTime": 150,
-            "visibleListInterval": 40,
+            "visibleListInterval": 26.6,
             "gameSpeed": 1,
             "runSpeed": 1.75,
             "maxHeartbeatInterval": 1000,
@@ -4301,11 +4301,6 @@ const Chain = Chainf;
 					fire: false,
 					main: false,
 				};
-
-				// Pre-calculate cosine for fast dot-product checks in the firing arc.
-				if (this.body.firingArc) {
-					this.firingArcCos = Math.cos(this.body.firingArc[1]);
-				}
 			}
 
 			findTarget(range) {
@@ -4328,9 +4323,7 @@ const Chain = Chainf;
 				};
 
 				let bestTarget = null;
-				// Renamed maxDanger to maxValue to reflect the new combined metric.
 				let maxValue = -Infinity; 
-				let maxDist = -Infinity
 				let foundLockedTarget = false;
 
 				// HOT PATH: This callback runs for every potential target.
@@ -4350,16 +4343,20 @@ const Chain = Chainf;
 						default: return;
 					}
 
-					// Firing arc check using dot product; much faster than `atan2`.
-					if (firingArc && !view360) {
-						const angleToTarget = { x: entity.x - body.x, y: entity.y - body.y };
-						const dot = angleToTarget.x * Math.cos(firingArc[0]) + angleToTarget.y * Math.sin(firingArc[0]);
-						if (dot < 0) return;
 
-						const angleToTargetMag = Math.sqrt(angleToTarget.x * angleToTarget.x + angleToTarget.y * angleToTarget.y);
+                    if (firingArc && !view360) {
+                        const angleToTarget = { x: entity.x - body.x, y: entity.y - body.y };
+                        const dot = angleToTarget.x * Math.cos(firingArc[0]) + angleToTarget.y * Math.sin(firingArc[0]);
+                        const angleToTargetMag = Math.hypot(angleToTarget.x, angleToTarget.y);
 						if (angleToTargetMag === 0) return;
+                        const normalized = dot / angleToTargetMag;
+                        if (normalized < Math.cos(this.body.firingArc[1])) return;
+                    }
 
-						if ((dot / angleToTargetMag) < this.firingArcCos) return;
+					// Our current target is still valid at this point
+					if (this.targetLock === entity) {
+						foundLockedTarget = true;
+						return;
 					}
 
 					// Calculate distance between the current body and the potential target entity.
@@ -4367,26 +4364,19 @@ const Chain = Chainf;
 					const dy = entity.y - body.y;
 					const distance = Math.sqrt(dx * dx + dy * dy);
 
-					// Calculate the effective value, incorporating distance as 1/3 as valuable as danger.
-					// This means distance applies a buff: (distance / 3) increases the dangerValue.
-					const effectiveValue = (entity.dangerValue||1) * distance;
-
-					// If the current target's effective value is less than the best found so far, skip it.
-					if (effectiveValue < maxValue) return;
-
-					// Update the best target if the current one has a higher effective value,
-					if(maxValue <= effectiveValue && maxDist < distance){
+					const effectiveValue = (entity.dangerValue||1) / distance;
+					if(maxValue <= effectiveValue){
 						bestTarget = entity;
 						maxValue = effectiveValue;
-						maxDist = distance
-					}
-
-					if (this.targetLock === entity) {
-						foundLockedTarget = true;
 					}
 				});
 
-				this.targetLock = foundLockedTarget ? this.targetLock : bestTarget;
+				if(foundLockedTarget){
+					this.targetLock = this.targetLock;
+				}else{
+					this.targetLock = bestTarget;
+					this.tick = room.cycleSpeed+1;
+				}
 			}
 
 			think(input) {
@@ -5273,6 +5263,7 @@ const Chain = Chainf;
                 this.labelOverride = "";
                 this.controllers = [];
                 this.childrenMap = new Map();
+				this.laserMap = new Map();
                 this.control = {
                     target: new Vector(0, 0),
                     goal: new Vector(0, 0),
@@ -5350,6 +5341,14 @@ const Chain = Chainf;
                     this.canShoot = false
                 }
             }
+			getEnd(speedVec = {x: 0, y: 0}, lerpComp = .75){
+				const gx = this.offset * Math.cos(this.direction + this.angle + this.body.facing) + (1.35 * this.length - this.width * this.settings.size / 2) * Math.cos(this.angle + this.master.facing)
+				const gy = this.offset * Math.sin(this.direction + this.angle + this.body.facing) + (1.35 * this.length - this.width * this.settings.size / 2) * Math.sin(this.angle + this.master.facing)
+				return {
+					x: this.master.x + this.master.size * gx - (this.length*speedVec.x) * lerpComp,
+					y: this.master.y + this.master.size * gy - (this.length*speedVec.y) * lerpComp
+				}
+			}
             newRecoil() {
                 let recoilForce = this.settings.recoil * 2 / room.speed;
                 this.body.accel.x -= recoilForce * Math.cos(this.recoilDir || 0);
@@ -5475,16 +5474,12 @@ const Chain = Chainf;
                         s.y += this.body.velocity.length * extraBoost * s.y / len;
                     }
                 }
-				// Client lerp makes it look like bullets dont come from barrels
-				const lerpComp = .75; // % of barrel length to spawn bullet (1-2)
+
 				if(this.bulletTypes[0].TYPE === "laser"){
-					new Laser(this.master, this.body, this.body.facing);
+					new Laser(this, this.getEnd());
 					return;
 				}else{
-                	let o = new Entity({
-                	    x: this.body.x + this.body.size * gx - (this.length*s.x) * lerpComp,
-                	    y: this.body.y + this.body.size * gy - (this.length*s.y) * lerpComp
-                	}, this.master.master);
+                	let o = new Entity(this.getEnd(s), this.master.master);
                 	o.velocity = s;
                 	o.initialBulletSpeed = speed;
                 	this.bulletInit(o);
@@ -5757,49 +5752,85 @@ const Chain = Chainf;
 		let laserId = 0;
 
 		class Laser {
-		    constructor(master, startPos, angle, settings = {}) {
-		        this.master = master;
-				this.color = master.color;
+		    constructor(gun, startPos, angle, settings = {}) {
+				this.setGun(gun);
+				this.skills = {
+					dmg: this.master.skill.dam,
+                	len: this.master.skill.spd,
+                	dur: this.master.skill.str,
+                	prc: this.master.skill.pen,
+				}
+				this.color = this.master?.color ?? 16;
+				this.team = this.master?.team ?? -101;
 		        this.id = laserId++;
 		        this.hitEntities = new Set();
 			
-		        this.angle = angle + Math.PI / 2;
-		        this.startPoint = { x: startPos.x, y: startPos.y }; // Use a copy
+		        this.angle = (angle || 0) + Math.PI / 2;
+            	this.startPoint = this.gun ? this.gun.getEnd() : { x: startPos.x, y: startPos.y };
 			
+				this.followGun = settings.FOLLOW_GUN ?? true;
 		        this.layer = settings.LAYER ?? 0;
-		        this.width = settings.WIDTH ?? 5;
-		        this.range = settings.RANGE ?? 10000;
-		        this.duration = settings.DURATION ?? 300;
+		        this.width = settings.WIDTH ?? (this.master.size * gun.settings.size) ?? 5;
+		        this.range = (settings.RANGE ?? 300) + 60 * this.skills.len;
+		        this.duration = (settings.DURATION ?? 300) + 25 * this.skills.dur;
 		        this.maxDuration = this.duration;
-		        this.pierce = settings.PIERCE ?? 3;
-		        this.damage = settings.DAMAGE ?? .1;
-		        this.damageFalloff = settings.DAMAGE_FALLOFF ?? 0.8;
-			
+		        this.pierce = Math.round((settings.PIERCE ?? 1) + this.skills.prc/1.5);
+		        this.damage = (settings.DAMAGE ?? .1) + 2 * this.skills.dmg;
+	
+
 		        this.endPoint = { x: 0, y: 0 };
 				this.calcEndPoint();
 		        this.visualEndPoint = { x: this.endPoint.x, y: this.endPoint.y };
 		        
 				lasers.add(this);
-		    }
+			}
 		
 		    calcEndPoint() {
-		        this.endPoint.x = this.startPoint.x + this.range * Math.sin(this.angle);
-		        this.endPoint.y = this.startPoint.y - this.range * Math.cos(this.angle);
+				let angle = this.angle;
+                if(this.gun){
+                    // Anchor start to muzzle without the velocity/lerp offset so
+                    // the laser follows the gun precisely and doesn't 'snap'.
+                    this.startPoint = this.gun.getEnd({x:this.master.velocity.x, y:this.master.velocity.y}, 1);
+                    angle += this.gun.angle;
+                }
+				if(this.master){
+					angle += this.master.facing;
+				}
+		        this.endPoint.x = this.startPoint.x + this.range * Math.sin(angle);
+		        this.endPoint.y = this.startPoint.y - this.range * Math.cos(angle);
 		    }
+
+			setGun(gun){
+				if(this.gun?.laserMap){
+					this.gun.laserMap.delete(this.id);
+				}
+				if(this.master?.laserMap){
+					this.master.laserMap.delete(this.id);
+				}
+				this.gun = gun;
+				this.master = gun?.master;
+				if(this.gun?.laserMap)this.gun.laserMap.set(this.id, this)
+				if(this.master?.laserMap)this.master.laserMap.set(this.id, this)
+			}
+
+			destroy(){
+				this.setGun(undefined);
+				lasers.delete(this);
+			}
 		
 		    tick() {
 		        if (this.maxDuration < this.duration) {
 		            this.maxDuration = this.duration;
 		        }
 		        if (this.duration-- <= 0) {
-		            lasers.delete(this);
+		            this.destroy()
 		            return;
 		        }
 		        this.calcEndPoint(); // Recalculate in case range/angle changed
 		        this.hitEntities.clear();
 		        this.visualEndPoint = { x: this.endPoint.x, y: this.endPoint.y };
 			
-		        const collectedHits = [];
+				const collectedHits = [];
 			
 		        // 1. Traverse grid to gather all potential targets along the laser's path
 		        const dx = this.endPoint.x - this.startPoint.x;
@@ -5822,7 +5853,7 @@ const Chain = Chainf;
                     const cellContent = grid.getCell(cx * cellSize, cy * cellSize);
                     if (cellContent) {
                         for (const entity of cellContent){
-							if (entity.team === this.master.team || this.hitEntities.has(entity)) return;
+							if (entity.team === this.team || this.hitEntities.has(entity)) return;
              				this.hitEntities.add(entity);
 		            		const collisionDetails = this.getCollisionDetails(entity);
 		            		if (collisionDetails){
@@ -5849,7 +5880,7 @@ const Chain = Chainf;
 			
 		        // 4. Apply damage to pierced targets and update visual end point
                 const piercedCount = Math.min(collectedHits.length, this.pierce);
-                if (piercedCount > 0) {
+                if (this.pierce > 0) {
                     for (let i = 0; i < piercedCount; i++) {
                         this.collide(collectedHits[i].entity);
                     }
@@ -5874,7 +5905,7 @@ const Chain = Chainf;
 		        const distanceY = entity.y - closestY;
 		        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
 			
-		        const totalRadius = entity.size*2 + this.width/2;
+		        const totalRadius = entity.size + this.width;
 		        if (distanceSquared < (totalRadius * totalRadius)) {
 		            const distFromStartSq = (closestX - this.startPoint.x) ** 2 + (closestY - this.startPoint.y) ** 2;
 		            return {
@@ -5887,21 +5918,20 @@ const Chain = Chainf;
 		    }
 		
             collide(entity) {
-                entity.damageReceived += this.damage
+                entity.damageReceived += this.damage;
             }
-		
-            addToPacket(packetArr) {
+
+            addToPacket(packetArr, playerContext) {
                 packetArr.push(
                     this.id,
                     this.startPoint.x,
                     this.startPoint.y,
                     this.visualEndPoint.x,
                     this.visualEndPoint.y,
-					this.color,
+					(this.master && playerContext.gameMode === "ffa" && this.color === "FFA_RED" && playerContext.body.color === "FFA_RED" && this.master.id === playerContext.body.id) === true ?  playerContext.teamColor??0 : this.color,
                     this.width,
                     this.maxDuration,
-                    this.duration,
-                    this.damageFalloff
+                    this.duration
                 );
             }
 		}
@@ -6004,6 +6034,7 @@ const Chain = Chainf;
                 };
                 this.aiSettings = {};
                 this.childrenMap = new Map();
+				this.laserMap = new Map();
                 this.SIZE = 1;
                 this.define(Class.genericEntity);
                 this.maxSpeed = 0;
@@ -6020,12 +6051,6 @@ const Chain = Chainf;
                 this.accel = new Vector(0, 0);
                 this.damp = .05;
                 this.collisionArray = [];
-				this.collisionArray.update = function(){
-					if(this.lastUpdate !== room.lastCycle){
-						this.length = 0;
-						this.lastUpdate = room.lastCycle;
-					}
-				}
 				this.collisionArray.lastUpdate = -1;
                 this.invuln = false;
                 this.godmode = false;
@@ -7752,9 +7777,8 @@ const Chain = Chainf;
                     for (let i = 0; i < this.guns.length; i++) {
                         let gun = this.guns[i];
                         if (gun.shootOnDeath) {
-                            let gx = gun.offset * Math.cos(gun.direction + gun.angle + gun.body.facing) + (1.35 * gun.length - gun.width * gun.settings.size / 2) * Math.cos(gun.angle + this.facing),
-                                gy = gun.offset * Math.sin(gun.direction + gun.angle + gun.body.facing) + (1.35 * gun.length - gun.width * gun.settings.size / 2) * Math.sin(gun.angle + this.facing);
-                            gun.fire(gx, gy, this.skill);
+							const gunEnd = gun.getEnd()
+                            gun.fire(gunEnd.x-gun.master.x, gunEnd.y-gun.master.y, this.skill);
                         }
                     }
                     // Explosions, phases and whatnot
@@ -10493,8 +10517,6 @@ function flatten(data, out, playerContext = null) {
                         if (dist > instance.realSize + other.realSize) {
                             return;
                         }
-						instance.collisionArray.update();
-						other.collisionArray.update();
                         instance.collisionArray.push(other);
                         other.collisionArray.push(instance);
                         if (doMotion) {
@@ -10790,8 +10812,6 @@ function flatten(data, out, playerContext = null) {
                             }
                         }
                         if (goAhead) {
-							my.collisionArray.update();
-							n.collisionArray.update();
                             my.collisionArray.push(n);
                             n.collisionArray.push(my);
                             if (t) {
@@ -11170,7 +11190,6 @@ function flatten(data, out, playerContext = null) {
                             /*if (bounce.type !== "bullet" && bounce.type !== "drone" && bounce.type !== "minion" && bounce.type !== "swarm" && bounce.type !== "trap") {
                                 if (bounce.collisionArray.some(body => body.type === "mazeWall") && util.getDistance(wall, bounce) < wall.size * 1.25) bounce.kill();
                             } else bounce.kill();*/
-							bounce.collisionArray.update();
                             bounce.collisionArray.push(wall);
                         }
                     } else {
@@ -11475,7 +11494,6 @@ function flatten(data, out, playerContext = null) {
                 entities.filterToChain(entity => {
 					entity.deactivation();
 				    if (!entity.isActive) return true;
-                    entitiesLiveLoop(entity)
 				
                     if (entity.isGhost === true) return false;
                     if (entity.neverInGrid === true) return true;
@@ -11490,6 +11508,12 @@ function flatten(data, out, playerContext = null) {
 				lasers.forEach((laser)=>{
 					laser.tick();
 				})
+
+				for(let entity of entities) {
+				    if (!entity.isActive) return true;
+                    entitiesLiveLoop(entity)
+                    entity.collisionArray.length = 0;
+                }
 
                 room.wallCollisions = []
 
@@ -12519,7 +12543,7 @@ function flatten(data, out, playerContext = null) {
                                         button.color = status ? 11 : 12
                                         button.name = status ? "Bots enabled" : "Bots disabled"
                                         if (status) {
-                                            room.botCap = 5
+                                            room.botCap = 1
                                         } else {
                                             room.botCap = 0
                                         }
@@ -12962,7 +12986,7 @@ function flatten(data, out, playerContext = null) {
                 }
 
 				const laserPacket = [];
-				lasers.forEach((l)=>l.addToPacket(laserPacket))
+				lasers.forEach((l)=>l.addToPacket(laserPacket, playerContext))
 
 
                 // Send the update packet to the client

@@ -346,6 +346,8 @@ window._gui = {
 				return ["Body Damage", "Max Health", "Flail Speed", "Flail Resistance", "Flail Penetration", "Flail Damage", "Flail Density", "Movement Speed", "Shield Regeneration", "Shield Capacity"];
 			case 14:
 				return ["Body Damage", "Max Health", "Syringe Range", "Syringe Longevity", "Syringe Sharpness", "Syringe Damage", "Refill Time", "Movement Speed", "Shield Regeneration", "Shield Capacity"];
+			case 15:
+				return ["Body Damage", "Max Health", "Laser Length", "Laser Duration", "Laser Pierce", "Laser Damage", "Reload", "Movement Speed", "Shield Regeneration", "Shield Capacity"];	
 			default:
 				return ["Body Damage", "Max Health", "Bullet Speed", "Bullet Health", "Bullet Penetration", "Bullet Damage", "Reload", "Movement Speed", "Shield Regeneration", "Shield Capacity"];
 		}

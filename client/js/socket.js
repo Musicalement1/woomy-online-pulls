@@ -348,10 +348,8 @@ function convertLasers(){
 				_width: convert.reader.next(),
 				maxDur: convert.reader.next(),
 				dur: convert.reader.next(),
-				falloff: convert.reader.next(),
 				shouldDie: 0,
 				fade: 1,
-				gradient: undefined
 			}
 		}else{
 			laser._x = convert.reader.next();
@@ -363,11 +361,10 @@ function convertLasers(){
 			laser._y2 = convert.reader.next();
 			laser.y2 = lerp(laser.y2, laser._y2, config.movementSmoothing)
 			laser.color = convert.reader.next();
-			laser._width = 100/convert.reader.next();
+			laser._width = convert.reader.next();
 			laser.width = lerp(laser.width, laser._width, config.movementSmoothing)
 			laser.maxDur = convert.reader.next();
 			laser.dur = convert.reader.next();
-			laser.falloff = convert.reader.next();
 		}
 		laser.shouldDie = 0;
 		laserMap.set(id, laser);
@@ -766,7 +763,7 @@ let socketInit = function () {
 						if (isNaN(global.player._renderv) || global.player._renderv === 0) global.player._renderv = 2000;
 						metrics._lastlag = metrics._lag;
 						metrics._lastuplink = Date.now()
-						config.movementSmoothing = lerp(config.movementSmoothing, Math.max(.5, Math.min(1, (1000/metrics._rendertime)/metrics._rendergap)), .05)
+						config.movementSmoothing = lerp(config.movementSmoothing, Math.max(.5, Math.min(1, (1000/metrics._rendertime)/metrics._rendergap)), .1)
 					//} //else logger.info("This is old data! Last given time: " + global.player._time + "; offered packet timestamp: " + cam.time + ".");
 					socket.controls.talk();
 					updateTimes++;

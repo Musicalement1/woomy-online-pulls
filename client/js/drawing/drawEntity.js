@@ -1350,7 +1350,6 @@ let drawEntity = function () {
 	function makeGunPath(context, length, height, aspect, skin) {
 		// Calculate height dimensions based on aspect
 		const h = aspect > 0 ? [height * aspect, height] : [height, -height * aspect];
-
 		// Now all drawing can be done relative to origin (0,0) without angle calculations
 		switch (skin) {
 			case 0: // Normal Barrel

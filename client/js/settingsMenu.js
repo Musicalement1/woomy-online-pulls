@@ -255,6 +255,7 @@ config.Woomy = (() => {
 	new Setting("lerpSize", "Lerp Entity Sizes", "boolean", true);
 	new Setting("performanceMode", "Performance Mode", "boolean", false);
 	new Setting("animatedLasers", "Animated Lasers", "boolean", true);
+	new Setting("clientSideAim", "Fake Aim", "boolean", false)
 	new Setting("mainMenuStyle", "Menu Dark Mode", "boolean", false, enabled => {
 		const setProperties = vars => {
 			if (enabled) {
