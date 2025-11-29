@@ -13,10 +13,14 @@ const closeButton = document.getElementById("gameJoinClose");
 closeButton.onclick = openJoinScreen
 function openJoinScreen(close) {
 	let mb = document.getElementById("gameJoinScreen")
-	if (close === true || mb.style.top === "0%") {
-		mb.style.top = "-100%";
+	if (close === true || mb.style.zIndex == "101") {
+		mb.style.opacity = 0;
+		setTimeout(()=>{
+			mb.style.zIndex = "-101";
+		}, 200)
 	} else if(!window.gameLaunched){
-		mb.style.top = "0%"
+		mb.style.zIndex = "101";
+		mb.style.opacity = 1;
 	}
 }
 
@@ -34,13 +38,19 @@ const roomInfoPlayerCount = document.getElementById("roomInfoPlayerAmount")
 const roomInfoGamemode = document.getElementById("roomInfoGamemode")
 const roomInfoGamemodeImage = document.getElementById("roomInfoGamemodeImage")
 const roomInfoGamemodeDescription = document.getElementById("roomInfoGamemodeDescription")
+const roomInfoSettingsMaxPlayerInput = document.getElementById("roomInfoSettingsMaxPlayerInput")
+const roomInfoSettingsMaxBotsInput = document.getElementById("roomInfoSettingsMaxBotsInput")
+
 
 let playerCount = 0;
+let maxPlayerCount = 99;
 let gamemodeName = "";
 let gamemodeImage = "";
 let gamemodeDescription = "";
 let selectedGamemode = "";
 let selectedRoomId = "";
+let maxPlayers = 99;
+let maxBots = 20;
 resetRoomInfo()
 function resetRoomInfo() {
 	gamemodeName = "Welcome!"
@@ -48,7 +58,7 @@ function resetRoomInfo() {
 	gamemodeDescription = "Select a room to join other players or click create and host a room for others to join."
 }
 function updateRoomInfo() {
-	roomInfoPlayerCount.innerHTML = playerCount;
+	roomInfoPlayerCount.innerHTML = `${playerCount}${maxPlayerCount!==99?`/${maxPlayerCount}`:""}`;
 	roomInfoGamemode.innerHTML = gamemodeName;
 	if (gamemodeImage === "") {
 		roomInfoGamemodeImage.style.display = "none";
@@ -57,11 +67,29 @@ function updateRoomInfo() {
 	}
 	roomInfoGamemodeImage.src = gamemodeImage;
 	roomInfoGamemodeDescription.innerHTML = gamemodeDescription
+	if(maxPlayers < 1){
+		roomInfoSettingsMaxPlayerInput.value = 1;
+		maxPlayers = 1;
+	}else if(maxPlayers > 99){
+		roomInfoSettingsMaxBotsInput.value = 99;
+		maxPlayers = 99;
+	}
+	if(maxBots < 0){
+		roomInfoSettingsMaxBotsInput.value = 0;
+		maxBots = 0;
+	}
+}
+
+roomInfoSettingsMaxPlayerInput.oninput = function(){
+	maxPlayers = Number(roomInfoSettingsMaxPlayerInput.value)
+}
+
+roomInfoSettingsMaxBotsInput.oninput = function(){
+	maxBots = Number(roomInfoSettingsMaxBotsInput.value)
 }
 
 const nameInput = document.getElementById("nameInput")
 nameInput.oninput = function () {
-	console.log("asdasd")
 	util._submitToLocalStorage("nameInput")
 }
 
@@ -79,12 +107,12 @@ joinButton.onclick = function () {
 	openJoinScreen(true);
 	if (global._disconnected && global._gameStart) return;
 	window.gameLaunched = true;
-	_startGame(selectedGamemode, selectedRoomId);
+	_startGame(selectedGamemode, selectedRoomId, maxPlayers, maxBots);
 }
 document.addEventListener("keydown", function eh (e) {
 	if (global._disconnected && global._gameStart) return;
 	let key = e.which || e.keyCode;
-	if (document.getElementById("gameJoinScreen").style.top !== "0%") return;
+	if (document.getElementById("gameJoinScreen").style.zIndex !== "101") return;
     this.removeEventListener("keydown", eh)
 	if (!global._disableEnter && key === global.KEY_ENTER && !global._gameStart) joinButton.click();
 })
@@ -458,13 +486,14 @@ async function showRooms() {
 		ele.children[0].children[0].innerHTML = gamemodeInfo.name || gamemodeInfo;
 
 		// Player count
-		ele.children[0].children[1].innerHTML = "Players: " + room.players
+		ele.children[0].children[1].innerHTML = `Players: ${room.players}${room.maxPlayers!==99?`/${room.maxPlayers}`:""}`;
 
 		// Room Code
 		ele.children[0].children[2].innerHTML = room.id;
 
 		ele.onclick = function () {
 			playerCount = room.players;
+			maxPlayerCount = room.maxPlayers||99;
 			gamemodeName = gamemodeInfo.name || gamemodeInfo;
 			gamemodeImage = gamemodeInfo.image || "";
 			gamemodeDescription = room.desc || gamemodeInfo.description || gamemodeInfo;

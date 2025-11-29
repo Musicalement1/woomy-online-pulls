@@ -34,7 +34,7 @@ function RememberScriptingIsBannable() {
     document.addEventListener("keydown", function eh (e) {
         if (global._disconnected && global._gameStart) return;
         let key = e.which || e.keyCode;
-        if (document.getElementById("gameJoinScreen").style.top !== "-100%") return;
+        if (document.getElementById("gameJoinScreen").style.zIndex !== "-101") return;
         this.removeEventListener("keydown", eh)
         if (!global._disableEnter && key === global.KEY_ENTER && !global._gameStart) document.getElementById("startButton").click();
     })
@@ -119,7 +119,7 @@ function RememberScriptingIsBannable() {
 
 util._retrieveFromLocalStorage("nameInput")
 util._retrieveFromLocalStorage("tokenInput")
-async function _startGame(gamemodeCode, joinRoomId) {
+async function _startGame(gamemodeCode, joinRoomId, maxPlayers, maxBots) {
     if (!global.animLoopHandle) _animloop();
     document.getElementById("mainWrapper").style.zIndex = -100;
     global.playerName = util._cleanString(document.getElementById("nameInput").value || "", 25)
@@ -138,7 +138,7 @@ async function _startGame(gamemodeCode, joinRoomId) {
         window.loadingTextStatus = "Starting server..."
         window.loadingTextTooltip = ""
         console.log("Starting server...")
-        await multiplayer.startServerWorker(gamemodeCode)
+        await multiplayer.startServerWorker(gamemodeCode, undefined, undefined, maxPlayers, maxBots)
         console.log("...Server started!")
 		window.serverWorker.onerror = undefined;
         await multiplayer.wrmHost()
@@ -182,9 +182,6 @@ function _animloop() {
     global.animLoopHandle = (window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame)(_animloop);
     if (nextTime < performance.now()) {
         try {
-            if (global._tankMenuColorReal >= 185) global._tankMenuColorReal = 100;
-            global._tankMenuColorReal += 0.16;
-            global._tankMenuColor = global._tankMenuColorReal | 0;
             global.player._renderv += (global.player._view - global.player._renderv) / 30;
             let ratio = getRatio();
             ctx.lineCap = "round";

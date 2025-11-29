@@ -1809,7 +1809,7 @@ let drawEntity = function () {
 		let tankDrawX = x;
 		let tankDrawY = y;
 
-		const useOffscreenCanvas = (alpha < 1 && turretInfo === 0);
+		const useOffscreenCanvas = ((alpha < 1 || fade < 1 ) && turretInfo === 0);
 		if (useOffscreenCanvas) {
 			currentContext = ctx2;
 
@@ -1915,6 +1915,7 @@ let drawEntity = function () {
 		if (fade > 0) {
 			finalColor = mixColors(finalColor, color.dgrey, 1 - fade);
 		}
+		if (instance === global.player.instance) global._tankMenuColor = finalColor // dont include invuln bc it looks bad
 		let invulnTicker = instance.invuln && (Date.now() - instance.invuln) % 200 > 110;
 		if (invulnTicker) finalColor = mixColors(finalColor, color.vlgrey, .5);
 

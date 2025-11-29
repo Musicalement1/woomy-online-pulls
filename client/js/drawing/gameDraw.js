@@ -121,6 +121,7 @@ let gameDraw = function (ratio) {
 			global.player.y = y;
 			global.player.rendershiftx = x
 			global.player.rendershifty = y
+			global.player.instance = instance;
 			global.player.team = instance.team;
 
 			if(config.clientSideAim === true){
@@ -175,13 +176,13 @@ let gameDraw = function (ratio) {
 	    ctx.translate(lx1, ly1);
 	    ctx.rotate(angle);
 	    if (config.performanceMode === false && config.animatedLasers === true) {
-	        const layers = 32;
+	        const layers = 6;
 	        for(let i = 0; i < layers; i++){
 	            const t = i / (layers - 1);
 	            const layerWidth = (width * (1+(i/layers)*Math.random())) * (1 - t * 0.7);
 	            let lcolor;
 	            if(t < 0.5) {
-	                const blend = t/(config.borderChunk*ratio);
+					const blend = Math.min(1, (t*2)/(config.borderChunk/4));
 	                lcolor = mixColors(darkColor, color.white, blend);
 	            } else {
 	                const blend = (t - 0.5) * 2;
@@ -189,7 +190,7 @@ let gameDraw = function (ratio) {
 	            }
 			
 	            ctx.fillStyle = lcolor;
-	            ctx.globalAlpha = .15 + .25/layers
+	            ctx.globalAlpha = .25 + 1/layers
 				ctx.beginPath();
 				ctx.arc(len, 0, layerWidth/1.75, 0, Math.PI * 2);
 				ctx.arc(0, 0, layerWidth/1.25, 0, Math.PI * 2);
@@ -655,7 +656,7 @@ let gameDraw = function (ratio) {
 					global.canUpgrade = 1;
 					let spacing = 10,
 						x = 20,
-						colorIndex = global._tankMenuColor,
+						tankColor = global._tankMenuColor,//global._tankMenuColor,
 						i = 0,
 						y = 20,
 						x2 = x,
@@ -664,7 +665,7 @@ let gameDraw = function (ratio) {
 						ticker = 0,
 						len = alcoveSize * .45, //100
 						height = len;
-					upgradeSpin += .01;
+					upgradeSpin += .0025
 					for (let model of _gui._upgrades) {
 						if (y > y2) y2 = y - 60;
 						x3 = x * 2 + 105;
@@ -672,23 +673,21 @@ let gameDraw = function (ratio) {
 						y *= glide
 						global.clickables.upgrade.place(i++, y, x, len, height);
 						ctx.globalAlpha = .5;
-						ctx.fillStyle = getColor(colorIndex > 185 ? colorIndex - 85 : colorIndex);
+						ctx.fillStyle = tankColor;
 						config.roundUpgrades ? drawGuiRoundRect(y, x, len, height, 10) : drawGuiRect(y, x, len, height);
-						ctx.globalAlpha = .175;
-						ctx.fillStyle = getColor(-10 + (colorIndex++ - (colorIndex > 185 ? 85 : 0)));
+						ctx.fillStyle = mixColors(tankColor, color.white, .5);
 						config.roundUpgrades ? drawGuiRoundRect(y, x, len, .6 * height, 4) : drawGuiRect(y, x, len, .6 * height);
-						ctx.fillStyle = color.black;
-						config.roundUpgrades ? drawGuiRoundRect(y, x + .6 * height, len, .4 * height, 4) : drawGuiRect(y, x + .6 * height, len, .4 * height);
+						ctx.fillStyle = "black";
+						ctx.globalAlpha = .25;
 						if (!global._died && !global._disconnected) {
 							let tx = Math.pow((global.guiMouse.x) - (y + height / 2), 2),
 								ty = Math.pow((global.guiMouse.y) - (x + len / 2), 2);
 							if (Math.sqrt(tx + ty) < height * .55) {
-								ctx.globalAlpha = .6;
 								config.roundUpgrades ? drawGuiRoundRect(y, x, len, height, 10) : drawGuiRect(y, x, len, height);
 							}
 						}
 						ctx.globalAlpha = 1;
-						let picture = getEntityImageFromMockup(model, _gui._color),
+						let picture = getEntityImageFromMockup(model, tankColor),
 							position = mockups.get(model).position,
 							scale = .6 * len / position.axis,
 							xx = y + .5 * height - scale * position.middle.x * Math.cos(upgradeSpin),

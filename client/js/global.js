@@ -174,7 +174,6 @@ var global = {
 	_deathSplashOverride: 0,
 	_deathSplashChoice: 0,
 	_tankMenuColor: 0,
-	_tankMenuColorReal: 100 + Math.round(Math.random() * 70),
 	searchName: "Basic",
 	_arenaClosed: false,
 	_ratio: window.devicePixelRatio,
@@ -229,7 +228,7 @@ global.message = "";
 global.time = 0;
 
 global.player = {
-	_x: 0,
+	x: 0,
 	y: 0,
 	_cx: 0,
 	_cy: 0,
@@ -247,7 +246,7 @@ global.player = {
 	_canSeeInvisible: 0,
 	_isOutsideRoom: 0,
 	// PLACEHOLDER
-	_instance: {
+	instance: {
 		"interval": 0,
 		"id": 0,
 		"index": 0,

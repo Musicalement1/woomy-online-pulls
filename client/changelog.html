@@ -1,6 +1,14 @@
 <div class="patchnoteSection">
 	<p class="patchnoteTitle">IMA FIRIN MAH LAZOR<span class="patchnoteTime">???, 2025</span></p>
 	<ul class="patchnoteBody">
+
+		<!--
+		TODO
+		- Default settings
+		- PeerJS Server
+		-->
+
+
 		<li>Added Lasers</li>
 		<ul>
 			<li>Instantly fire a beam that deals damage to some amount of entities inside of it</li>
@@ -16,7 +24,14 @@
 			<li>Lasers, being seperate from the player, cannot have their position update as fast casuing them to look janky</li>
 			<li>In any sense, I figured this was for the better because knowing your server sided aim is probably more valuable even though the controls might appear less responsive</li>
 		</ul>
+		<li>Touched up main menus</li>
 		<li>Reduced the resolution of most assets resulting in much faster loading times</li>
+		<li>Added room settings during creation</li>
+		<ul>
+			<li>Max Players</li>
+			<li>Bot Amount</li>
+		</ul>
+		<li>Bumped network protocol version because of the above change</li>
 		<li>Added a Performance Mode setting which sacrifices as much as possible (within reason) to increase FPS</li>
 		<li>Removed Server CPU and Server Mem from the L menu because they served no purpose</li>
 		<li>Added Movement Smoothing to the L menu</li>
@@ -46,6 +61,9 @@
 		<li>Removed skip bomb io type</li>
 		<li>Removed all uses of coreSize</li>
 		<li>Adjusted baller branch design</li>
+		<li>Fixed there not being a 1 second cooldown between swapping tanks with Q</li>
+		<li>Fixed shootOnDeath not apply skills properly, fixing explosions having infinite damage</li>
+		<li>Upgrade menu color now matches simulated tank color</li>
 	</ul>
 </div>
 <div class="patchnoteSection">

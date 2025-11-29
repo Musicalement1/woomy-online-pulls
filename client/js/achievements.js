@@ -153,8 +153,6 @@ const rewardManager = new class {
 
 			div.appendChild(link);
 			document.getElementById("achievementsHeader").appendChild(div);
-
-			document.getElementById("achievementsHolder").style.height = `700px`
 		};
 	}
 

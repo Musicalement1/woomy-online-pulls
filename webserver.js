@@ -43,6 +43,7 @@ class Room {
 		this.id = genCode();
 		this.gamemodeCode = "4tdm.json";
 		this.players = 1;
+		this.maxPlayers = 99;
 		rooms.set(this.id, this);
 	}
 	removeFromRooms() {
@@ -195,7 +196,7 @@ const handleRequest = (req, res) => {
 			res.writeHead(200, { "Content-Type": "application/json" });
 			const list = [];
 			for (let [id, room] of rooms) {
-				list.push({ id: id, gamemodeCode: room.gamemodeCode, desc: room.desc||"", players: room.players });
+				list.push({ id: id, gamemodeCode: room.gamemodeCode, desc: room.desc||"", players: room.players, maxPlayers: room.maxPlayers });
 			}
 			res.end(JSON.stringify(list));
 			return;
@@ -328,9 +329,10 @@ wss.on('connection', function connection(ws, req) {
 			ws.on("close", room.removeFromRooms.bind(room));
 			ws.on("message", (msg) => {
 				try {
-					const { players, name, desc, ping } = JSON.parse(msg.toString());
+					const { players, maxPlayers, name, desc, ping } = JSON.parse(msg.toString());
 					if (ping === true) return;
 					if (players !== undefined) room.players = Number(players) || 0;
+					if (maxPlayers !== undefined) room.maxPlayers = Number(maxPlayers) || 99;
 					if (name) room.gamemodeCode = `${name}`.substring(0, 25);
 					if (desc) room.desc = `${desc}`.substring(0, 350);
 				} catch (err) {

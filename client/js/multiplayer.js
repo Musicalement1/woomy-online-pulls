@@ -169,7 +169,7 @@ multiplayer.joinRoom = async function (roomId, socket) {
 	}
 	this.playerPeer.onclose = function(){
 		global._disconnected = 1;
-		global.message = global._disconnectReason = "The host has left the game"
+		global.message = global._disconnectReason += " (Disconnected)"
 	}
 }
 multiplayer.getRooms = async function (){
@@ -177,13 +177,15 @@ multiplayer.getRooms = async function (){
 	res = await res.json()
 	return res;
 }
-multiplayer.startServerWorker = async function (gamemodeCode, displayNameOverride, displayDescOverride) {
+multiplayer.startServerWorker = async function (gamemodeCode, displayNameOverride, displayDescOverride, maxPlayers, maxBots) {
 	window.serverWorker.postMessage({
 		type: "startServer",
 		server: {
 			suffix: gamemodeCode,
 			displayName: displayNameOverride,
-			displayDesc: displayDescOverride
+			displayDesc: displayDescOverride,
+			maxPlayers: maxPlayers,
+			maxBots: maxBots
 		}
 	});
 	let startPromise = new Promise((res, rej) => {
@@ -207,6 +209,7 @@ multiplayer.startServerWorker = async function (gamemodeCode, displayNameOverrid
 					if(multiplayer.roomWs === undefined || multiplayer.roomWs.readyState !== 1) return
 					multiplayer.roomWs.send(JSON.stringify({
 						players: data.players,
+						maxPlayers: data.maxPlayers,
 						name:  data.name||gamemodeCode,
 						desc: data.desc
 					}))

@@ -16,7 +16,7 @@ global.process = {
     argv: []
 };
 
-const SERVER_PROTOCOL_VERSION = 1;
+const SERVER_PROTOCOL_VERSION = 2;
 
 // MULTIPLAYER //
 const userSockets = new Map()
@@ -30,8 +30,8 @@ worker.onmessage = function (msg) {
             import("./definitions.js").then((res) => {
                 worker.postMessage({ type: "serverStartText", text: "Loading game..." })
                 global.initExportCode = res.initExportCode
-                console.log(data.server)
-                startServer(data.server.suffix, res.defExports, data.server.displayName, data.server.displayDesc)
+                console.log("SERVER START DATA:", data.server)
+                startServer(data.server.suffix, res.defExports, data.server.displayName, data.server.displayDesc, data.server.maxPlayers, data.server.maxBots)
             }).catch((err) => {
                 console.error(err)
                 worker.postMessage({ type: "serverStartText", text: "Failed to load definitons", tip: "Please reload the page and try again" })
@@ -51,6 +51,7 @@ worker.onmessage = function (msg) {
 			for(let [k,v] of userSockets){
 				v.talk("nrid", data.id)
 			}
+			if(global.updateRoomInfo) global.updateRoomInfo();
 			break;
     }
 }
@@ -927,7 +928,8 @@ global.require = function (thing) {
 
 // THE SERVER //
 
-async function startServer(configSuffix, defExports, displyNameOverride, displayDescOverride) {
+async function startServer(configSuffix, defExports, displyNameOverride, displayDescOverride, maxPlayersOverride, botAmountOverride) {
+	configSuffix = configSuffix || "4tdm.json"
     //configSuffix = "blackout4tdm.json" 
     /*jslint node: true */
     /*jshint -W061 */
@@ -1741,7 +1743,7 @@ const Chain = Chainf;
                 this.testingMode = c.testingMode;
                 this.speed = c.gameSpeed;
                 this.timeUntilRestart = c.restarts.interval;
-                this.maxBots = c.BOTS;
+                this.maxBots = botAmountOverride ?? c.BOTS;
                 this.maxFood = config.MAX_FOOD;
                 this.maxNestFood = config.MAX_NEST_FOOD;
                 this.maxCrashers = config.MAX_CRASHERS;
@@ -5465,14 +5467,15 @@ const Chain = Chainf;
                     }
                 }
 
-				if(this.bulletTypes[0].TYPE === "laser"){
-					new Laser(this, this.getEnd(), 0, typeof this.bulletTypes[1] === "object" ? Object.assign(this.bulletTypes[0], this.bulletTypes[1]) : this.bulletTypes[0])
+                if(this.bulletTypes[0].TYPE === "laser"){
+                    new Laser(this, this.getEnd(), sd, typeof this.bulletTypes[1] === "object" ? Object.assign({}, this.bulletTypes[0], this.bulletTypes[1]) : this.bulletTypes[0])
 					return;
-                }else{
+                } else {
                     let o = new Entity(this.getEnd(s, .6), this.master.master);
-                	this.bulletInit(o);
-					o.velocity = s;
-                	return o;
+                    // Set velocity first so bulletInit can use it to set proper facing/firing
+                    o.velocity = s;
+                    this.bulletInit(o);
+                    return o;
 				}
             }
             bulletInit(o) {
@@ -5593,36 +5596,41 @@ const Chain = Chainf;
 				if(this.isAura === true) this.stroke = false;
             }
         }
-        let bots = [],
-            entitiesToAvoid = [],
-            entities = new Chain(),
-            bot = null,
-            players = [],
-            clients = [],
-            multitabIDs = [],
-            connectedIPs = [],
-            entitiesIdLog = 1,
-            startingTank = c.serverName.includes("Testbed Event") ? "event_bed" : ran.chance(1 / 25000) ? "tonk" : "basic",
-            blockedNames = [ // I have a much longer list, across alot of languages. Might add it
-                "fuck",
-                "bitch",
-                "cunt",
-                "shit",
-                "pussy",
-                "penis",
-                "nigg",
-                "penis",
-                "dick",
-                "whore",
-                "dumbass",
-                "fag"
-            ],
-            bannedPhrases = [
-                "fag",
-                "nigg",
-                "trann",
-                "troon"
-            ];
+        let bots = [];
+        let entitiesToAvoid = [];
+        let entities = new Chain();
+        let bot = null;
+        let players = [];
+        let clients = [];
+		global.updateRoomInfo = () => {
+			const obj = { type: "updatePlayers", players: clients.length, maxPlayers: maxPlayersOverride, name: room.displayName, desc: room.displayDesc };
+			console.log("Updating room info in WRM", obj)
+			worker.postMessage(obj)
+		}
+        let multitabIDs = [];
+        let connectedIPs = [];
+        let entitiesIdLog = 1;
+        let startingTank = c.serverName.includes("Testbed Event") ? "event_bed" : ran.chance(1 / 25000) ? "tonk" : "basic";
+        let blockedNames = [ // I have a much longer list, across alot of languages. Might add it
+            "fuck",
+            "bitch",
+            "cunt",
+            "shit",
+            "pussy",
+            "penis",
+            "nigg",
+            "penis",
+            "dick",
+            "whore",
+            "dumbass",
+            "fag"
+        ];
+        let bannedPhrases = [
+            "fag",
+            "nigg",
+            "trann",
+            "troon"
+        ];
         let grid = new HashGrid();/*new QuadTree({
         x: 0,
         y: 0,
@@ -5763,10 +5771,10 @@ const Chain = Chainf;
 				this.followGun = this.settings.FOLLOW_GUN ?? true;
 		        this.layer = this.settings.LAYER ?? this.master?.LAYER ?? 0;
 
-		        this.angle = (angle??0) + Math.PI/2
-				if(this.followGun !== true && this.master && this.gun){
-					this.angle = this.master.facing + this.gun.angle
-				}
+                // Angle passed in should be in the same trig convention as getEnd (cos -> x, sin -> y).
+                // Use the exact angle supplied — do not add a hard-coded 90° offset here.
+                this.angle = (angle ?? 0);
+        		if (this.followGun === false && this.gun.master) this.angle += this.gun.master.facing + this.gun.angle;
             	this.startPoint = this.gun ? this.gun.getEnd() : { x: startPos.x, y: startPos.y };
 			
 				this.onDealtDamage = this.settings.ON_DEALT_DAMAGE;
@@ -5788,20 +5796,17 @@ const Chain = Chainf;
 		        this.damage = (this.settings.DAMAGE ?? .1) * (this.skills.dmg/2);
 			}
 		
-		    calcEndPoint() {
-				let angle = this.angle;
-				if(this.followGun === true){
-                	if(this.gun){
-                	    this.startPoint = this.gun.getEnd({x:0,y:0}, 0, this.gun.length*1.5);
-                	    angle += this.gun.angle;
-						if(this.gun.master){
-							angle += this.gun.master.facing;
-						}
-                	}
-				}
-		        this.endPoint.x = this.startPoint.x + this.range * Math.sin(angle);
-		        this.endPoint.y = this.startPoint.y - this.range * Math.cos(angle);
-		    }
+			calcEndPoint() {
+			    let angle = this.angle;
+			    if (this.followGun === true && this.gun) {
+			        this.startPoint = this.gun.getEnd({ x: 0, y: 0 }, 0, this.gun.length * 1.5);
+			        if (this.gun.master) angle += this.gun.master.facing + this.gun.angle;
+			        else angle += this.gun.angle;
+			    }
+			    // use same trig convention as getEnd (cos -> x, sin -> y)
+			    this.endPoint.x = this.startPoint.x + this.range * Math.cos(angle);
+			    this.endPoint.y = this.startPoint.y + this.range * Math.sin(angle);
+			}
 
 			setGun(gun){
 				if(this.gun?.laserMap){
@@ -6625,7 +6630,7 @@ const Chain = Chainf;
                     }
                     if (set.CAMERA_TO_MOUSE != null) {
                         this.scoped = true,
-                            this.scopedMult = set.CAMERA_TO_MOUSE[1] - 1
+                        this.scopedMult = set.CAMERA_TO_MOUSE[1] - 1
                     }
                     this.altCameraSource = null
                     if (set.GUNS != null) {
@@ -7796,7 +7801,7 @@ const Chain = Chainf;
                     for (let i = 0; i < this.guns.length; i++) {
                         let gun = this.guns[i];
                         if (gun.shootOnDeath) {
-                            gun.fire(this.skill);
+                            gun.fire(gun.body.skill);
                         }
                     }
                     // Explosions, phases and whatnot
@@ -8820,8 +8825,8 @@ function flatten(data, out, playerContext = null) {
                     players = players.filter(player => player.id !== this.id);
                     clients = clients.filter(client => client.id !== this.id);
                     clearInterval(this.animationsInterval);
-                    		worker.postMessage({ type: "updatePlayers", players: clients.length, name: room.displayName, desc: room.displayDesc })
-                }
+					global.updateRoomInfo()
+				}
                 closeWithReason(reason) {
                     this.talk("P", reason);
                     this.kick(reason);
@@ -9052,7 +9057,7 @@ function flatten(data, out, playerContext = null) {
                             this.woomyOnlineSocketId = m[3];
                             util.info(trimName(name) + (isNew ? " joined" : " rejoined") + " the game! Player ID: " + (entitiesIdLog - 1) + ". IP: " + this.ip + ". Players: " + clients.length + ".");
 
-                    		worker.postMessage({ type: "updatePlayers", players: clients.length, name: room.displayName, desc: room.displayDesc })
+							global.updateRoomInfo()
                             /*if (this.spawnCount > 0 && this.name != undefined && trimName(name) !== this.name) {
                                 this.error("spawn", "Unknown protocol error!");
                                 return;
@@ -9065,6 +9070,14 @@ function flatten(data, out, playerContext = null) {
                                 this.close(true);
                                 return;
                             }
+
+							if(players.length > maxPlayersOverride){
+                                console.log("[INFO]", `WoomyOnlineSocketId (${this.woomyOnlineSocketId}) attempted to join while the room is full.`);
+                                this.talk("P", "This room is currently full. Please try again later.");
+                                this.talk("closeSocket")
+                                this.close(true);
+                                return;
+							}
 
                             if (this.spawnCount === 0) {
                                 sockets.broadcast(trimName(name) + " has joined the game! (" + players.length + " players)")
@@ -9986,6 +9999,7 @@ function flatten(data, out, playerContext = null) {
                             if (body?.onQ) body.onQ(body)
 
                             if (!isAlive || body.bossTierType === -1 || !body.canUseQ) return;
+							body.canUseQ = false;
                             setTimeout(() => body.canUseQ = true, 1000);
                             let labelMap = (new Map().set("MK-1", 1).set("MK-2", 2).set("MK-3", 3).set("MK-4", 4).set("MK-5", 0).set("TK-1", 1).set("TK-2", 2).set("TK-3", 3).set("TK-4", 4).set("TK-5", 0).set("PK-1", 1).set("PK-2", 2).set("PK-3", 3).set("PK-4", 0).set("EK-1", 1).set("EK-2", 2).set("EK-3", 3).set("EK-4", 4).set("EK-5", 5).set("EK-6", 0).set("HK-1", 1).set("HK-2", 2).set("HK-3", 3).set("HK-4", 0).set("HPK-1", 1).set("HPK-2", 2).set("HPK-3", 0).set("RK-1", 1).set("RK-2", 2).set("RK-3", 3).set("RK-4", 4).set("RK-5", 0).set("OBP-1", 1).set("OBP-2", 2).set("OBP-3", 0).set("AWP-1", 1).set("AWP-2", 2).set("AWP-3", 3).set("AWP-4", 4).set("AWP-5", 5).set("AWP-6", 6).set("AWP-7", 7).set("AWP-8", 8).set("AWP-9", 9).set("AWP-10", 0).set("Defender", 1).set("Custodian", 0).set("Switcheroo (Ba)", 1).set("Switcheroo (Tw)", 2).set("Switcheroo (Sn)", 3).set("Switcheroo (Ma)", 4).set("Switcheroo (Fl)", 5).set("Switcheroo (Di)", 6).set("Switcheroo (Po)", 7).set("Switcheroo (Pe)", 8).set("Switcheroo (Tr)", 9).set("Switcheroo (Pr)", 10).set("Switcheroo (Au)", 11).set("Switcheroo (Mi)", 12).set("Switcheroo (La)", 13).set("Switcheroo (A-B)", 14).set("Switcheroo (Si)", 15).set("Switcheroo (Hy)", 16).set("Switcheroo (Su)", 17).set("Switcheroo (Mg)", 0).set("CHK-1", 1).set("CHK-2", 2).set("CHK-3", 0).set("GK-1", 1).set("GK-2", 2).set("GK-3", 0).set("NK-1", 1).set("NK-2", 2).set("NK-3", 3).set("NK-4", 4).set("NK-5", 5).set("NK-5", 0).set("Dispositioner", 1).set("Reflector", 2).set("Triad", 0).set("SOULLESS-1", 1).set("Railtwin", 1).set("Synced Railtwin", 0).set("EQ-1", 1).set("EQ-2", 2).set("EQ-3", 3).set("EQ-4", 0).set("ES-1", 1).set("ES-2", 2).set("ES-3", 3).set("ES-4", 4).set("ES-5", 0).set("RS-1", 1).set("RS-2", 2).set("RS-3", 3).set("RS-4", 0));
                             if (labelMap.has(body.label) && body.bossTierType !== 16) body.tierCounter = labelMap.get(body.label);
@@ -13051,7 +13065,7 @@ function flatten(data, out, playerContext = null) {
         }, 1000);*/
 
         if (room.maxBots > 0) setTimeout(() => util.log(`Spawned ${room.maxBots} AI bot${room.maxBots > 1 ? "s." : "."}`), 350);
-        worker.postMessage({ type: "updatePlayers", players: clients.length, name: room.displayName, desc: room.displayDesc })
+		global.updateRoomInfo()
         worker.postMessage({ type: "serverStarted" })
     })();
 }
