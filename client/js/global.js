@@ -464,6 +464,8 @@ function resizeEvent() {
 	scale *= [0.15, 0.5, 0.75, 1, 0.08][["Very Low (35%)", "Low (50%)", "Medium (75%)", "High (100%)", "PixelMode (8%)"].indexOf(config.resolutionScale)];
 	global._canvas._cv.width = global._screenWidth = window.innerWidth * scale;
 	global._canvas._cv.height = global._screenHeight = window.innerHeight * scale;
+	global._canvas.vignetteCanvas.width = global._canvas._cv.width;
+	global._canvas.vignetteCanvas.height = global._canvas._cv.height;
 	global._ratio = scale;
 	if (!global.mobile) document.getElementById('gameCanvas').focus();
 	global._screenSize = Math.min(1920, Math.max(window.innerWidth, 1280));

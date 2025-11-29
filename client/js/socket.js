@@ -12,6 +12,7 @@ import { fasttalk } from "./fasttalk.js";
 import { lerp } from "./lerp.js";
 import { ASSET_MAGIC, loadAsset, setAsset } from "../../shared/assets.js";
 import "./consoleCommands.js"
+import { drawVignette } from "./drawing/vignette.js";
 
 
 
@@ -768,6 +769,10 @@ let socketInit = function () {
 					//convert.begin(m);
 					//convert.broadcast();
 				}
+					break;
+				case "v": 
+					global.vignetteScalarSocket = m[0]
+					global.vignetteColorSocket = m[1]
 					break;
 				case "closeSocket":
 					multiplayer.playerPeer.destroy();

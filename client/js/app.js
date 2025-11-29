@@ -12,6 +12,7 @@ import { multiplayer } from "./multiplayer.js";
 import "./mainmenu.js";
 import "./joinMenu.js";
 import { config } from "./config.js";
+import { drawVignette } from "./drawing/vignette.js";
 
 if ('serviceWorker' in navigator) {
 	window.addEventListener('load', () => {
@@ -213,6 +214,7 @@ function _animloop() {
                 gameDrawServerStatusText();
             }
             gameDrawDead();
+			if(!config.performanceMode&&!global._blackout) drawVignette();
             if (global._disconnected) gameDrawDisconnected();
         } catch (error) {
             gameDrawError(error)

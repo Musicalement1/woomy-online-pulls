@@ -137,6 +137,9 @@ global._canvas = new (class Canvas {
 		this._cv = document.getElementById("gameCanvas");
 		this._cv.width = global._screenWidth;
 		this._cv.height = global._screenHeight;
+		this.vignetteCanvas = document.getElementById("vignetteCanvas");
+		this.vignetteCanvas.width = this._cv.width;
+		this.vignetteCanvas.height = this._cv.height;
 		if (mobile) {
 			this._initMobile();
 		} else {
