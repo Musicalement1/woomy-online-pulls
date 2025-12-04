@@ -195,6 +195,16 @@ a:visited:hover {
     color: #c0c0ee;
 }
 
+.legalDisclaimer{
+    z-index: 1000;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    margin: 5px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, .5);
+}
+
 #playerNameInput {
     padding: 6px;
     font-size: larger;

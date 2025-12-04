@@ -121,6 +121,7 @@ function RememberScriptingIsBannable() {
 util._retrieveFromLocalStorage("nameInput")
 util._retrieveFromLocalStorage("tokenInput")
 async function _startGame(gamemodeCode, joinRoomId, maxPlayers, maxBots) {
+	document.getElementById("legalDisclaimer")?.remove?.()
     if (!global.animLoopHandle) _animloop();
     document.getElementById("mainWrapper").style.zIndex = -100;
     global.playerName = util._cleanString(document.getElementById("nameInput").value || "", 25)

@@ -72,12 +72,6 @@ function displayHowToPlay() {
 	popupMessage.textContent = "Woomy has a wide range of different features and mechanics. The basics of movement involve using the WASD keys, which make your tank move around. You use your mouse to control where your target location is, which your tank will face torwards. To fire your tank, you can press down on the left button of your mouse. You can use E and C keys for AutoFire and AutoSpin. Your goal is to kill other players and AIs, while trying to keep your own tank alive. Killing entities in Woomy gives you score. People with the most score are shown on the leaderboard. Polygons (or Food) give score aswell. Most tanks that branch from the director branch work differently, as they have drones instead of bullets. Drones are controlled by holding down your mouse and using your cursor to controll where they go to on your screen. You can also not hold down on the mouse button, to allow them to roam freely around you and protect you. Not all drones are controllable. There is alot more to this game, but I am running out of screenspace. Go ahead and play the game yourself and lets see what you discover.";
 }
 
-function displayAbout() {
-	popup.style.display = "block";
-	popupTitle.textContent = "About Woomy";
-	popupMessage.textContent = "Woomy is A fan-made clone of diep.io, and an unofficial sequel to arras.io! Along with over 1.7k tanks, this server contains some very interesting additions...";
-}
-
 document.getElementById("achievementsButton").onclick = displayAchievements
 function displayAchievements() {
 	document.getElementsByClassName('achievementsHolder')[0].style.display = 'block';
