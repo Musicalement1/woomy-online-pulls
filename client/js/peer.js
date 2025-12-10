@@ -28,7 +28,7 @@ class PeerWrapper {
 		const servers = window.iceServers.concat(iceServersParam)
 		console.log(servers)
 		this.peer = new Peer({
-            host: window.location.host==="localhost"?"0.peerjs.com":"signaling.woomy-2rbx.onrender.com",
+            host: window.location.host==="localhost"?"0.peerjs.com":"signaling.woomy.online",
 			path: window.location.host==="localhost"?"/":"/peerjs",
 			port: "443",
 			config:{
