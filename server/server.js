@@ -5151,7 +5151,7 @@ const Chain = Chainf;
                     attrib[i] = curve(this.raw[i] / c.MAX_SKILL);
                 }
                 this.rld = Math.pow(0.5, attrib[skcnv.rld]);
-                this.pen = apply(2.5, attrib[skcnv.pen]);
+                this.pen = apply(0.5, attrib[skcnv.pen]);
                 this.str = apply(3, attrib[skcnv.str]);
                 this.dam = apply(3.4, attrib[skcnv.dam]);
                 this.spd = 0.5 + apply(1.5, attrib[skcnv.spd]);
@@ -5565,7 +5565,6 @@ const Chain = Chainf;
                         break;
                     case 8:
                     case "trap":
-                        out.PUSHABILITY = 1 / Math.pow(sk.pen, .5);
                         out.RANGE = shoot.range * .5;
                         break;
                     case 2:
